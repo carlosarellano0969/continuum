@@ -11,26 +11,31 @@ Continuum is an inspectable memory and policy layer for long-running agents. Bui
 - **OpenRouter chat adapter**: `openai/gpt-oss-20b` via OpenRouter, temperature 0, bounded 4K context.
 - **Harness Bench**: Three inference arms on 12 synthetic deterministic tasks; metrics per run: cost, wall latency, vector calls, tokens, correctness %. Stored in Atlas, queryable via `/api/bench/runs`.
 - **Vercel deployment**: Single unified service (Vite web + Python serverless API) with environment-driven provider selection.
-- **Harness report panel**: fifth UI panel with per-arm cost, wall time, vector calls, tokens and correctness, a live-run button, and each arm's answer text.
+- **Harness report panel**: fifth UI panel with per-arm cost, wall time, vector calls, tokens, correctness, unsafe answers and tokens per correct answer, a live-run button, and each arm's answer text.
+- **Output guardrail**: Continuum checks every recommendation for invented rates, prices or durations and regenerates once, recorded in the decision trace.
 - **CI/CD**: GitHub Actions (API tests, web lint/typecheck/tests/build, secret scan) on every PR; acceptance suite passes against the deployed URL.
 
 ## Results (measured today)
 
-Same model for every arm (`openai/gpt-oss-20b` via OpenRouter, temperature 0), same synthetic tasks, scored by the action label each arm names. Continuum is measured after its own loop: the seeded outcomes are analyzed and the resulting policy change is approved before any arm runs.
+Same model for every arm (`openai/gpt-oss-20b` via OpenRouter, temperature 0), same 12 synthetic tasks, scored by the action label each arm names. The tasks are cases where the right move depends on this organization's recorded outcomes: financing questions, pricing objections, and a partner-directory lead whose apparent uplift is not supported by enough evidence.
 
-**Full task set (12 tasks, run against the Atlas Sandbox at 14:05):**
+- **Out of the box:** the raw model with the task and answer format only.
+- **Context stuffing:** the model plus the whole interaction history in the prompt.
+- **Continuum:** Atlas vector recall of 3 memories, the approved policy version, and an output guardrail that regenerates any answer stating invented rates, prices or durations. Measured after its own loop: the seeded outcomes are analyzed and the policy change is approved before any arm runs.
 
-| Arm | Correct | Tokens | Cost |
-|---|---|---|---|
-| Out of the box (task only) | 83.3% | 4,983 | $0.0003 |
-| Context stuffing (whole history in the prompt) | 91.7% | 56,000 | $0.0086 |
-| **Continuum** (Atlas vector recall + approved policy) | **91.7%** | **8,265** | **$0.0020** |
+**Live run, 12 tasks (run `bench_d672ac01…` in Atlas `bench_runs`):**
 
-Continuum matches the accuracy of stuffing the whole history into the prompt with 6.8x fewer tokens and 4.3x lower cost, and every answer cites the memory IDs and policy version behind it. The out-of-the-box agent is cheapest but misses the pricing-objection case and falls for the partner-directory distractor.
+| Arm | Correct | Unsafe answers | Tokens | Tokens per correct answer | Atlas vector searches |
+|---|---|---|---|---|---|
+| Out of the box | 66.7% | 0 | 3,926 | 491 | 0 |
+| Context stuffing | 91.7% | 0 | 58,103 | 5,282 | 0 |
+| **Continuum** | **100%** | **0** | **8,003** | **667** | **12** |
 
-**Deployed URL, two consecutive live runs (3 tasks each):** identical correctness per arm (all 100%); Continuum did a real Atlas `$vectorSearch` on every task and used 2,483 tokens against 13,521 for context stuffing.
-
-Caveat: in the 12-task run about half of Continuum's retrievals fell back to keyword search because the hosted embeddings key was rate-limited (3 requests/minute without a billing method); the deployed runs above had no fallbacks.
+- Continuum gets every case right. The raw model misses a third of them: it defers financing questions and tailors replies to the lead source, the opposite of what this organization's outcomes support.
+- Against stuffing the whole history into the prompt, Continuum is more accurate with 7x fewer tokens and 8x fewer tokens per correct answer.
+- Against the raw model, Continuum spends about 1.4x the tokens per correct answer. That premium buys the memory, the policy and the guardrail, and every answer cites the memory IDs and policy version behind it.
+- Earlier runs caught the raw model and Continuum inventing a warranty length or a "0%" rate. Continuum's guardrail now regenerates those answers; the raw model has no such check.
+- Dollar cost is recorded per call from OpenRouter, but it varies with the provider OpenRouter picks for each request, so tokens are the stable cost measure.
 
 ## Links
 
