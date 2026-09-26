@@ -192,3 +192,8 @@ class HealthResponse(BaseModel):
     status: Literal["ok", "degraded", "unconfigured"]
     version: str
     services: dict[str, str]
+
+
+class BenchRunRequest(StrictModel):
+    arms: list[str] | None = None
+    repeats: int = Field(default=1, ge=1, le=5)

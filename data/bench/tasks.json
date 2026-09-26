@@ -1,0 +1,98 @@
+[
+  {
+    "task_id": "bench-01",
+    "group": "financing_pricing",
+    "day_of_week": "Monday",
+    "scenario": "A synthetic prospective buyer with financing and pricing inquiries on Monday wants financing details and a monthly payment estimate right away, not a deferred follow-up after several interactions.",
+    "expected_action": "fast_financing_information",
+    "synthetic": true
+  },
+  {
+    "task_id": "bench-02",
+    "group": "financing_pricing",
+    "day_of_week": "Wednesday",
+    "scenario": "On Wednesday, a synthetic shopper with financing and pricing inquiries calls asking for financing details and a monthly payment estimate before comparing other interactions this week.",
+    "expected_action": "fast_financing_information",
+    "synthetic": true
+  },
+  {
+    "task_id": "bench-03",
+    "group": "financing_pricing",
+    "day_of_week": "Friday",
+    "scenario": "A synthetic lead with financing and pricing inquiries messages on Friday wanting financing details and a monthly payment estimate quickly across their recent interactions with the team.",
+    "expected_action": "fast_financing_information",
+    "synthetic": true
+  },
+  {
+    "task_id": "bench-04",
+    "group": "financing_pricing",
+    "day_of_week": "Sunday",
+    "scenario": "A synthetic buyer with financing and pricing inquiries emails on Sunday asking for financing details and a monthly payment estimate before the weekend interactions end.",
+    "expected_action": "fast_financing_information",
+    "synthetic": true
+  },
+  {
+    "task_id": "bench-05",
+    "group": "pricing_objection",
+    "day_of_week": "Monday",
+    "scenario": "A synthetic prospective buyer raises pricing objections on Monday and hesitates over a discount offer, wanting a needs based, evidence-driven explanation before agreeing to next steps.",
+    "expected_action": "needs_based_pricing_explanation",
+    "synthetic": true
+  },
+  {
+    "task_id": "bench-06",
+    "group": "pricing_objection",
+    "day_of_week": "Tuesday",
+    "scenario": "On Tuesday, a synthetic shopper raises pricing objections and hesitates over a discount offer, wanting a needs based, evidence-driven explanation before moving forward.",
+    "expected_action": "needs_based_pricing_explanation",
+    "synthetic": true
+  },
+  {
+    "task_id": "bench-07",
+    "group": "pricing_objection",
+    "day_of_week": "Thursday",
+    "scenario": "A synthetic lead raises pricing objections on Thursday and hesitates over a discount offer, wanting a needs based, evidence-driven explanation before accepting anything.",
+    "expected_action": "needs_based_pricing_explanation",
+    "synthetic": true
+  },
+  {
+    "task_id": "bench-08",
+    "group": "pricing_objection",
+    "day_of_week": "Saturday",
+    "scenario": "On Saturday, a synthetic buyer raises pricing objections and hesitates over a discount offer, wanting a needs based, evidence-driven explanation before committing.",
+    "expected_action": "needs_based_pricing_explanation",
+    "synthetic": true
+  },
+  {
+    "task_id": "bench-09",
+    "group": "distractor_source",
+    "day_of_week": "Monday",
+    "scenario": "A synthetic lead from the regional partner directory source writes in on Monday with a routine general question.",
+    "expected_action": "standard_source_reply",
+    "synthetic": true
+  },
+  {
+    "task_id": "bench-10",
+    "group": "distractor_source",
+    "day_of_week": "Tuesday",
+    "scenario": "On Tuesday, a synthetic prospect from the regional partner directory source asks a routine follow-up question.",
+    "expected_action": "standard_source_reply",
+    "synthetic": true
+  },
+  {
+    "task_id": "bench-11",
+    "group": "distractor_source",
+    "day_of_week": "Wednesday",
+    "scenario": "A synthetic lead sourced from the regional partner directory writes in on Wednesday with a routine general inquiry.",
+    "expected_action": "standard_source_reply",
+    "synthetic": true
+  },
+  {
+    "task_id": "bench-12",
+    "group": "distractor_source",
+    "day_of_week": "Friday",
+    "scenario": "On Friday, a synthetic prospect referred by the regional partner directory source sends in a routine question.",
+    "expected_action": "standard_source_reply",
+    "synthetic": true
+  }
+]
