@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import time
 from datetime import datetime, timedelta, timezone
@@ -31,6 +32,23 @@ from .repository import Repository
 
 FAILURE_RESULTS = {"failure", "failed", "negative", "bad", "escalated", "rejected", "unresolved"}
 DEMO_DATA_DIR = Path(__file__).resolve().parents[3] / "data" / "demo"
+
+
+def _fixture_embeddings(model_name: str) -> dict[str, list[float]]:
+    """Seed-memory vectors precomputed once with the hosted model, keyed by sha256.
+
+    Resets reuse them instead of re-embedding six memories through a rate-limited
+    API; any other model (or a missing file) falls back to live embedding.
+    """
+    path = DEMO_DATA_DIR / f"memory_embeddings.{model_name}.json"
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    if payload.get("model") != model_name:
+        return {}
+    vectors = payload.get("vectors")
+    return vectors if isinstance(vectors, dict) else {}
 
 
 class ContinuumService:
@@ -106,10 +124,12 @@ class ContinuumService:
         if fixture_identity != identity.model_dump():
             raise ConflictError("demo fixtures do not match the configured demo scope")
         memories: list[Memory] = []
+        precomputed = _fixture_embeddings(self.embedder.model_name)
         for row in memory_rows:
             embedding_model = self.embedder.model_name
             try:
-                embedding = await self.embedder.embed(row["content"])
+                fixture_key = hashlib.sha256(row["content"].encode("utf-8")).hexdigest()
+                embedding = precomputed.get(fixture_key) or await self.embedder.embed(row["content"])
             except DependencyError:
                 embedding = await self.fallback_embedder.embed(row["content"])
                 embedding_model = self.fallback_embedder.model_name

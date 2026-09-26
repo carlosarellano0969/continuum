@@ -122,3 +122,17 @@ def test_validation_errors_use_string_detail(client: TestClient) -> None:
     )
     assert response.status_code == 422
     assert isinstance(response.json()["detail"], str)
+
+
+def test_fixture_embeddings_cover_every_seed_memory_for_the_hosted_model() -> None:
+    import hashlib
+    import json
+
+    from continuum_api.service import DEMO_DATA_DIR, _fixture_embeddings
+
+    vectors = _fixture_embeddings("voyage-4-large")
+    rows = [json.loads(line) for line in (DEMO_DATA_DIR / "memories.jsonl").read_text(encoding="utf-8").splitlines() if line.strip()]
+    for row in rows:
+        key = hashlib.sha256(row["content"].encode("utf-8")).hexdigest()
+        assert len(vectors[key]) == 1024
+    assert _fixture_embeddings("some-other-model") == {}
