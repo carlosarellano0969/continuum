@@ -71,6 +71,11 @@ def load_tasks() -> list[dict[str, Any]]:
 
 
 def format_cost(value: float) -> str:
+    # Bench runs routinely cost fractions of a cent (e.g. $0.0031). Rounding
+    # those to 2 decimals collapses every real, non-zero run to "$0.00", so
+    # switch to 4 decimals under a cent; otherwise keep the usual 2.
+    if value != 0 and abs(value) < 0.01:
+        return f"${value:.4f}"
     return f"${value:.2f}"
 
 
@@ -290,7 +295,13 @@ class BenchHarness:
             "synthetic": True,
         }
 
-    async def run(self, identity: Identity, arms: list[str] | None, repeats: int) -> dict[str, Any]:
+    async def run(
+        self,
+        identity: Identity,
+        arms: list[str] | None,
+        repeats: int,
+        task_limit: int | None = None,
+    ) -> dict[str, Any]:
         arms = list(arms) if arms else list(ALL_ARMS)
         for arm in arms:
             if arm not in ALL_ARMS:
@@ -298,6 +309,10 @@ class BenchHarness:
         seed = self._service.settings.demo_seed
         await self._service.reset_demo(identity, seed)
         tasks = load_tasks()
+        if task_limit is not None:
+            # Fixed task order is preserved (load_tasks returns the fixture in
+            # file order), so a limited run stays reproducible across calls.
+            tasks = tasks[:task_limit]
         run_id = f"bench_{uuid4().hex}"
         ts = utc_now().isoformat()
         rows: list[dict[str, Any]] = []
@@ -315,6 +330,7 @@ class BenchHarness:
             "seed": seed,
             "synthetic": True,
             "arms": arms,
+            "task_count": len(tasks),
             "rows": rows,
             "aggregates": {arm: aggregate_arm(arm, rows) for arm in arms},
         }

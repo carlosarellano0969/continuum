@@ -26,6 +26,17 @@ This additive corpus keeps `data/demo` unchanged. It deterministically models
 retains nonpreferred controls, and writes weekly/phase trend summaries and an
 interaction-file hash to its manifest.
 
+## Run the harness bench against a live API
+
+```powershell
+python scripts/run_bench.py --base-url http://127.0.0.1:8000/api --task-limit 4
+```
+
+Calls `POST /api/bench/run` with a 900-second timeout (a full 3-arm, 12-task
+run takes minutes), then prints one summary line per arm (correct %, cost to
+4 decimals, wall, vector_calls, tokens) and the `run_id`. `--arms` takes a
+comma list (default: all three) and `--repeats` repeats the task set per arm.
+
 ## Reset a running demo
 
 ```powershell
