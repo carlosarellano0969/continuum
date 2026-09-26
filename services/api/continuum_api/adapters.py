@@ -399,7 +399,7 @@ class OpenRouterChatModel:
             "memories": evidence,
             "instruction": (
                 "Return JSON with keys recommendation and rationale. Follow the policy, use the memories "
-                "as evidence, and never invent financial terms."
+                "as evidence, never invent financial terms, and keep numbers out of the recommendation."
             ),
         }
         if customer:
@@ -441,8 +441,6 @@ class OpenRouterChatModel:
                         json={
                             "model": model_name,
                             "temperature": 0,
-                            # Same provider for every arm, so cost follows tokens.
-                            "provider": {"sort": "price"},
                             "max_tokens": self._max_output_tokens,
                             "reasoning": {"effort": self._reasoning_effort},
                             "messages": [
