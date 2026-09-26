@@ -167,7 +167,7 @@ Final presentation checks:
 
 ## Three-minute demo script (Continuum V4: Atlas + hosted models)
 
-Open <DEPLOYED_URL> in the browser.
+Open https://continuum-five-red.vercel.app in the browser.
 
 | Time | Action | What to say |
 |---|---|---|
