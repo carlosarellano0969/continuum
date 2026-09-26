@@ -193,6 +193,19 @@ If the live model is cold, do not fill the silence with extra clicks. Say that t
 
 For a predictable non-model rehearsal, set `OLLAMA_BASE_URL=` in `.env` and restart the API. Never present fallback output as a live Ollama result.
 
+## Q1 Acceptance Test Matrix
+
+| Test Case | Local (http://127.0.0.1:8001) | Deployed | Status |
+|---|---|---|---|
+| BASE_URL parameterization | ✓ (env var support) | Pending | Code ready |
+| Restart persistence | Code ready (MongoDB) | Pending | Needs 2nd process test |
+| Bench run structure (3 arms × 12 rows) | Timeout during reset | Pending | See findings |
+| Bench run identical per arm | Timeout during reset | Pending | See findings |
+| Memory/policy resolution in explanation | Code ready | Pending | Needs live API |
+| Trace fallback=true check | Code ready | Pending | Needs live API |
+| Reset script (`--base-url`, timing) | HTTP timeout | Pending | See findings |
+| Secret scan (mongodb+srv, sk-or-v1, Bearer) | Pass (no secrets found) | Pending | Script ready |
+
 ## Test commands
 
 Run from the repository root unless a command changes directories:
