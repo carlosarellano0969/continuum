@@ -15,7 +15,7 @@ Continuum is an inspectable memory and policy layer for long-running agents. Bui
 
 ## Links
 
-- **Live URL**: <DEPLOYED_URL>
+- **Live URL**: https://continuum-five-red.vercel.app
 - **Repository**: https://github.com/carlosarellano0969/continuum
 - **Architecture diagram**: docs/diagrams/03-architecture.svg
 - **Harness diagram**: docs/diagrams/04-harness-bench.svg

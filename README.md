@@ -4,7 +4,7 @@ Continuum is an inspectable memory and policy layer for long-running agents. The
 
 ## Status
 
-**Live on Vercel:** <DEPLOYED_URL>
+**Live on Vercel:** https://continuum-five-red.vercel.app
 
 - **Web:** React/TypeScript/Vite
 - **API:** FastAPI, Pydantic, PyMongo
