@@ -74,3 +74,50 @@ Never commit `.env`, paste credentials into documentation, or claim Atlas verifi
 - `docs/ARCHITECTURE.md` — runtime and trust boundaries
 - `docs/DEMO.md` — exact Windows runbook and three-minute demo
 - `docs/ATLAS_SETUP.md` — Atlas credentials, Vector Search index, and live-verification gate
+
+## Deploy
+
+Continuum is deployed as a single unified service on Vercel (web app + API) with Render as the fallback API host.
+
+### Required Environment Variables
+
+Add these to the Vercel project settings (as plain environment variables in the UI):
+
+- **MongoDB**: `MONGODB_URI`, `MONGODB_DATABASE`, `MONGODB_VECTOR_INDEX`
+- **Models**: `MODEL_API_KEY`, `ENDPOINT`, `OPENROUTER_API_KEY`, `OPENROUTER_CHAT_MODEL`, `MODEL_PROVIDER=openrouter`, `EMBED_PROVIDER=voyage`, `EMBED_DIMENSIONS=1024`
+- **CORS**: `CONTINUUM_CORS_ORIGINS` (set to the Vercel deployment URL, e.g., `https://continuum-app.vercel.app`)
+- **Web**: `VITE_API_BASE_URL=/api` (relative path in production)
+
+### Deploy to Vercel
+
+1. Push this branch to GitHub.
+2. In the [Vercel dashboard](https://vercel.com/dashboard), click **Add New Project**.
+3. Import the GitHub repository.
+4. Set the **Framework** to **Vite** and **Root Directory** to `.` (repository root).
+5. Add the environment variables listed above.
+6. Deploy.
+
+The Vercel project will:
+- Build the web app (`npm run build` in `apps/web`).
+- Run the API as a Python serverless function (`api/index.py`).
+- Rewrite `/api/*` requests to the serverless function.
+- Serve the web app for all other requests.
+
+### Fallback: Deploy API to Render
+
+If Vercel deployment fails, deploy the API separately to Render:
+
+1. Push to GitHub.
+2. In [Render](https://render.com), create a new **Web Service**.
+3. Connect your GitHub repository.
+4. Set **Runtime** to **Python 3.12**.
+5. Set **Start Command** to `uvicorn continuum_api.main:app --host 0.0.0.0 --port $PORT` (from `services/api`).
+6. Set **Root Directory** to `services/api`.
+7. Add the environment variables (MongoDB, model, CORS).
+8. Deploy.
+
+Then, update the web app to call the Render API URL:
+```powershell
+$env:VITE_API_BASE_URL = "https://your-render-app.onrender.com/api"
+npm run build --prefix apps/web
+```
