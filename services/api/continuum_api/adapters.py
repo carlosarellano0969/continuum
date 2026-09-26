@@ -441,6 +441,8 @@ class OpenRouterChatModel:
                         json={
                             "model": model_name,
                             "temperature": 0,
+                            # Same provider for every arm, so cost follows tokens.
+                            "provider": {"sort": "price"},
                             "max_tokens": self._max_output_tokens,
                             "reasoning": {"effort": self._reasoning_effort},
                             "messages": [
