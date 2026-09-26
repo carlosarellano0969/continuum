@@ -1,6 +1,6 @@
 # MongoDB Atlas setup and live-verification gate
 
-> **Current state:** Atlas live verification is pending because this workspace does not yet have Atlas credentials. The local Ollama/in-memory build is verified; that does not verify Atlas persistence, transactions, or Vector Search.
+> **Current state (event day, L1):** Atlas is reachable and the Vector Search index already exists and is `READY` on the hackathon sandbox cluster: database `continuum_v1`, collection `memories`, index `memory_embedding_index`, 1024-dim `embedding` field, cosine similarity, filters on `organization_id`, `agent_id`, `type`, `status`. Do not recreate it. Embeddings come from the hosted `voyage-4-large` model (1024 dimensions) via `POST https://ai.mongodb.com/v1/embeddings`, not local Ollama.
 
 Continuum uses database `continuum_v1`, collection `memories`, vector field `embedding`, and Vector Search index `memory_embedding_index`. Every application query includes both `organization_id` and `agent_id`.
 
@@ -32,13 +32,22 @@ MONGODB_DATABASE=continuum_v1
 MONGODB_VECTOR_INDEX=memory_embedding_index
 MONGODB_TIMEOUT_MS=4000
 
+MODEL_PROVIDER=openrouter
+EMBED_PROVIDER=voyage
+EMBED_DIMENSIONS=1024
+ENDPOINT=ai.mongodb.com
+MODEL_API_KEY=<voyage/ai.mongodb.com bearer token>
+OPENROUTER_API_KEY=<openrouter key>
+OPENROUTER_CHAT_MODEL=openai/gpt-oss-20b
+OPENROUTER_CHAT_MODEL_FALLBACK=anthropic/claude-haiku-4.5
+
 OLLAMA_BASE_URL=http://127.0.0.1:11434
 OLLAMA_CHAT_MODEL=gpt-oss:20b
 OLLAMA_EMBED_MODEL=nomic-embed-text:latest
 OLLAMA_CONTEXT_WINDOW=4096
 ```
 
-Never commit `.env`.
+`MODEL_PROVIDER`/`EMBED_PROVIDER` accept `openrouter|ollama|deterministic` and `voyage|ollama|deterministic`. Leave them unset (or `ollama`) to keep the local Ollama path. Never commit `.env`.
 
 ## 3. Seed Atlas through the API
 
@@ -57,21 +66,19 @@ $health | ConvertTo-Json -Depth 6
 if ($health.services.mongodb -ne 'ok') {
   throw 'Atlas is not healthy. Stop here; the API may be using its in-memory fallback.'
 }
-if ($health.services.ollama -ne 'ok' -or $health.services.embedding_model -ne 'ok') {
-  throw 'Ollama embeddings are not healthy. Do not seed fallback vectors into Atlas.'
+if ($health.services.embedding_model -ne 'ok') {
+  throw 'Hosted Voyage embeddings are not healthy. Do not seed fallback vectors into Atlas.'
 }
 
 .\services\api\.venv\Scripts\python.exe scripts\reset_demo.py `
   --base-url http://127.0.0.1:8000/api --seed 20260924 --with-summary
 ```
 
-The reset creates scoped documents and 768-dimensional `nomic-embed-text` embeddings in Atlas. Confirm in Atlas Data Explorer that `continuum_v1.memories` exists and that a memory document has an `embedding` array.
+The reset creates scoped documents and 1024-dimensional `voyage-4-large` embeddings in Atlas. Confirm in Atlas Data Explorer that `continuum_v1.memories` exists and that a memory document has an `embedding` array.
 
-## 4. Create the Vector Search index
+## 4. Vector Search index (already created — do not recreate)
 
-In Atlas Data Explorer, select `continuum_v1.memories`, open the Search Indexes view, choose **Create Search Index**, select **Vector Search** and the JSON editor, and name the index `memory_embedding_index`.
-
-Use this definition:
+The index `memory_embedding_index` on `continuum_v1.memories` already exists and is `READY` on the hackathon sandbox cluster. Its definition:
 
 ```json
 {
@@ -79,7 +86,7 @@ Use this definition:
     {
       "type": "vector",
       "path": "embedding",
-      "numDimensions": 768,
+      "numDimensions": 1024,
       "similarity": "cosine"
     },
     {
@@ -102,11 +109,9 @@ Use this definition:
 }
 ```
 
-The first two filter fields enforce the tenant and agent pre-filter used on every request. `type` and `status` are also indexed because the API can include them in the same `$vectorSearch.filter` expression. The 768 dimensions must match the local `nomic-embed-text:latest` output exactly.
+The first two filter fields enforce the tenant and agent pre-filter used on every request. `type` and `status` are also indexed because the API can include them in the same `$vectorSearch.filter` expression. The 1024 dimensions must match the hosted `voyage-4-large` output exactly.
 
-Wait until Atlas reports the index as `READY`. Index creation is asynchronous.
-
-The equivalent `mongosh` command is:
+If the index ever needs to be recreated (for example, on a fresh cluster), the equivalent `mongosh` command is:
 
 ```javascript
 use continuum_v1
@@ -115,7 +120,7 @@ db.memories.createSearchIndex(
   "vectorSearch",
   {
     fields: [
-      { type: "vector", path: "embedding", numDimensions: 768, similarity: "cosine" },
+      { type: "vector", path: "embedding", numDimensions: 1024, similarity: "cosine" },
       { type: "filter", path: "organization_id" },
       { type: "filter", path: "agent_id" },
       { type: "filter", path: "type" },
@@ -142,12 +147,15 @@ import httpx
 from pymongo import MongoClient
 
 uri = os.environ["MONGODB_URI"]
+endpoint = os.environ["ENDPOINT"]
+model_api_key = os.environ["MODEL_API_KEY"]
 vector = httpx.post(
-    "http://127.0.0.1:11434/api/embed",
-    json={"model": "nomic-embed-text:latest", "input": "financing monthly payment options"},
+    f"https://{endpoint}/v1/embeddings",
+    headers={"Authorization": f"Bearer {model_api_key}"},
+    json={"input": ["financing monthly payment options"], "model": "voyage-4-large"},
     timeout=60,
-).json()["embeddings"][0]
-assert len(vector) == 768, f"expected 768 dimensions, received {len(vector)}"
+).json()["data"][0]["embedding"]
+assert len(vector) == 1024, f"expected 1024 dimensions, received {len(vector)}"
 
 client = MongoClient(uri, serverSelectionTimeoutMS=4000)
 collection = client["continuum_v1"]["memories"]
@@ -192,5 +200,7 @@ Only after the index is `READY`, the direct `$vectorSearch` command succeeds, sc
 - `mongodb: unconfigured`: `MONGODB_URI` is blank or was not loaded. Check `--env-file .env`.
 - `mongodb: degraded` at startup: the URI, database user, IP allowlist, DNS, TLS, or timeout is wrong. The API has fallen back to memory; do not continue an Atlas verification.
 - API returns HTTP 503 after startup: Atlas became unavailable during an operation. Read the `{ "detail": "..." }` response and restore connectivity.
-- Atlas is `ok` but semantic results look lexical: verify the exact index name, `READY` status, 768 dimensions, vector path, and all filter fields. Run the direct vector test above.
+- Atlas is `ok` but semantic results look lexical: verify the exact index name, `READY` status, 1024 dimensions, vector path, and all filter fields. Run the direct vector test above.
+- `embedding_model: degraded` with `EMBED_PROVIDER=voyage`: check `ENDPOINT` (bare host, e.g. `ai.mongodb.com`) and `MODEL_API_KEY`; the API adds `https://` and `/v1/embeddings` itself.
+- `chat_model: unconfigured` with `MODEL_PROVIDER=openrouter`: `OPENROUTER_API_KEY` is missing from the environment the API was started with.
 - Proposal approval fails only on Atlas: confirm the cluster supports transactions and that the database user can update policies, proposals, and audit events.

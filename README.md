@@ -1,29 +1,27 @@
-# Continuum V1
+# Continuum V4
 
-Continuum is an inspectable memory and policy layer for long-running agents. V1.1 presents the complete Decide → Explain → Remember → Govern evidence loop on one responsive page. The web application, API, generative model, and embeddings run locally and can persist evidence and vector-searchable memories in MongoDB Atlas when Atlas is configured.
-
-The signature experience answers: **Why did you change your mind?** It ties the answer to immutable policy versions, retrieved memories, measured outcomes, and the human approval that authorized the change.
+Continuum is an inspectable memory and policy layer for long-running agents. The **Decide → Explain → Remember → Govern** evidence loop answers the signature question: **Why did you change your mind?** tied to immutable policy versions, retrieved memories, measured outcomes, and human approval. Deployed on MongoDB Atlas with hosted embeddings and chat, Continuum's **Harness Bench** compares three inference arms to measure the value of the memory layer.
 
 ## Status
 
-The Windows local path is implemented and verified with:
+**Live on Vercel:** <DEPLOYED_URL>
 
-- React/Vite in the browser;
-- FastAPI and Pydantic locally;
-- `gpt-oss:20b` and `nomic-embed-text:latest` through Ollama; and
-- deterministic process-local persistence when Atlas is not configured.
+- **Web:** React/TypeScript/Vite
+- **API:** FastAPI, Pydantic, PyMongo
+- **Chat:** OpenRouter `gpt-oss-20b`, temperature 0, 4K context
+- **Embeddings:** MongoDB-hosted Voyage `voyage-4-large`, 1024 dimensions
+- **Data:** MongoDB Atlas Sandbox with Vector Search and `$vectorSearch` filters, synthetic labeled interactions
+- **Harness Bench:** Compares out-of-box, context-stuffing, and continuum arms on the same 12 synthetic tasks
 
-The application currently bounds Ollama chat to a 4,096-token context, 512 output tokens, and low reasoning effort. This is the rehearsed V1 demo setting, not the model's maximum context.
+| Component | Built before | Built today |
+|---|---|---|
+| V1.1 app, local Ollama, in-memory repo, 47 API + 23 acceptance tests | ✓ | |
+| Atlas persistence, Vector Search with tenant/type filters | | ✓ PR #2 (L1) |
+| OpenRouter chat adapter, Voyage embeddings via ai.mongodb.com | | ✓ PR #2 (L1) |
+| Harness Bench (three arms, cost/wall/vectors/tokens/correctness per run) | | ✓ PR #3 (L2) |
+| Vercel deployment + CI | | ✓ PR #1 (L3) |
 
-**Atlas live verification is pending.** The Atlas adapter and Vector Search query path are implemented, but they must not be described as verified until cluster connectivity and index setup succeed and the checklist in [`docs/ATLAS_SETUP.md`](docs/ATLAS_SETUP.md) passes against a live cluster.
-
-## Runtime
-
-- Web: React, TypeScript, Vite
-- API: FastAPI, Pydantic, PyMongo
-- Model: `gpt-oss:20b` through Ollama
-- Embeddings: `nomic-embed-text:latest` through Ollama, 768 dimensions
-- Data: process-local deterministic repository by default; MongoDB Atlas with Vector Search when configured
+See [`docs/PROVENANCE.md`](docs/PROVENANCE.md) for full details.
 
 ## Windows quick start
 
@@ -67,6 +65,16 @@ Open `http://127.0.0.1:5173`. Before presenting, follow the model warm-up, reset
 
 Never commit `.env`, paste credentials into documentation, or claim Atlas verification from the in-memory fallback.
 
+## Harness Bench
+
+Compares the same task, same model, temperature 0, across three arms so judges can see what the memory layer buys:
+
+- **`out_of_box`** — role + task only. No memory, no policy, no tools.
+- **`context_stuffing`** — arm A plus the full `data/demo/interactions.jsonl` log serialized in file order, truncated to fit a ~4K-token budget (no retrieval, so relevance is luck of the file order).
+- **`continuum`** — the real `ContinuumService.recommend` path: top-5 filtered recall plus the active policy, citing memory IDs and policy version.
+
+`POST /api/bench/run` (`{arms?, repeats?}`) seeds the deterministic demo fixtures, runs 12 synthetic tasks per arm, and stores one document per run in `bench_runs` (Atlas when configured, else in-memory). `GET /api/bench/runs` lists the last 20 run summaries; `GET /api/bench/runs/{id}` returns the full row-level document. Every record is `synthetic: true`, and two runs with the same seed produce identical `correct` results per arm.
+
 ## Documentation
 
 - `AGENTS.md` — contributor boundaries and verification rules
@@ -74,3 +82,50 @@ Never commit `.env`, paste credentials into documentation, or claim Atlas verifi
 - `docs/ARCHITECTURE.md` — runtime and trust boundaries
 - `docs/DEMO.md` — exact Windows runbook and three-minute demo
 - `docs/ATLAS_SETUP.md` — Atlas credentials, Vector Search index, and live-verification gate
+
+## Deploy
+
+Continuum is deployed as a single unified service on Vercel (web app + API) with Render as the fallback API host.
+
+### Required Environment Variables
+
+Add these to the Vercel project settings (as plain environment variables in the UI):
+
+- **MongoDB**: `MONGODB_URI`, `MONGODB_DATABASE`, `MONGODB_VECTOR_INDEX`
+- **Models**: `MODEL_API_KEY`, `ENDPOINT`, `OPENROUTER_API_KEY`, `OPENROUTER_CHAT_MODEL`, `MODEL_PROVIDER=openrouter`, `EMBED_PROVIDER=voyage`, `EMBED_DIMENSIONS=1024`
+- **CORS**: `CONTINUUM_CORS_ORIGINS` (set to the Vercel deployment URL, e.g., `https://continuum-app.vercel.app`)
+- **Web**: `VITE_API_BASE_URL=/api` (relative path in production)
+
+### Deploy to Vercel
+
+1. Push this branch to GitHub.
+2. In the [Vercel dashboard](https://vercel.com/dashboard), click **Add New Project**.
+3. Import the GitHub repository.
+4. Set the **Framework** to **Vite** and **Root Directory** to `.` (repository root).
+5. Add the environment variables listed above.
+6. Deploy.
+
+The Vercel project will:
+- Build the web app (`npm run build` in `apps/web`).
+- Run the API as a Python serverless function (`api/index.py`).
+- Rewrite `/api/*` requests to the serverless function.
+- Serve the web app for all other requests.
+
+### Fallback: Deploy API to Render
+
+If Vercel deployment fails, deploy the API separately to Render:
+
+1. Push to GitHub.
+2. In [Render](https://render.com), create a new **Web Service**.
+3. Connect your GitHub repository.
+4. Set **Runtime** to **Python 3.12**.
+5. Set **Start Command** to `uvicorn continuum_api.main:app --host 0.0.0.0 --port $PORT` (from `services/api`).
+6. Set **Root Directory** to `services/api`.
+7. Add the environment variables (MongoDB, model, CORS).
+8. Deploy.
+
+Then, update the web app to call the Render API URL:
+```powershell
+$env:VITE_API_BASE_URL = "https://your-render-app.onrender.com/api"
+npm run build --prefix apps/web
+```

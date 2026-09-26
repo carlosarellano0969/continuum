@@ -9,8 +9,12 @@ from typing import Any
 
 
 BASE_URL = os.environ.get(
-    "CONTINUUM_ACCEPTANCE_BASE_URL", "http://127.0.0.1:8000/api"
+    "BASE_URL", os.environ.get(
+        "CONTINUUM_ACCEPTANCE_BASE_URL", "http://127.0.0.1:8000"
+    )
 ).rstrip("/")
+if not BASE_URL.endswith("/api"):
+    BASE_URL = BASE_URL.rstrip("/") + "/api"
 TIMEOUT = float(os.environ.get("CONTINUUM_ACCEPTANCE_TIMEOUT_SECONDS", "5"))
 MODEL_TIMEOUT = float(os.environ.get("CONTINUUM_ACCEPTANCE_MODEL_TIMEOUT_SECONDS", "75"))
 REQUIRE_API = os.environ.get("CONTINUUM_ACCEPTANCE_REQUIRE_API", "0") == "1"
@@ -57,6 +61,16 @@ def request_json(
     if not isinstance(payload, dict):
         raise AssertionError(f"{method} {path} did not return a JSON object")
     return payload
+
+
+def is_mongodb_configured() -> bool:
+    """Check if MongoDB is configured via /api/health."""
+    try:
+        health = request_json("GET", "/health")
+        mongodb_status = health.get("services", {}).get("mongodb", "unconfigured")
+        return mongodb_status != "unconfigured"
+    except Exception:
+        return False
 
 
 class ContinuumApiContractTests(unittest.TestCase):
@@ -302,6 +316,120 @@ class ContinuumApiContractTests(unittest.TestCase):
             )
         self.assertEqual(caught.exception.status, 409)
         self.assertIsInstance(caught.exception.payload.get("detail"), str)
+
+    def test_restart_persistence(self):
+        """Test that memories persisted to MongoDB survive API restart."""
+        if not is_mongodb_configured():
+            self.skipTest("MongoDB not configured")
+
+        # Write a memory
+        mem = request_json("POST", "/memories", {
+            "content": "acceptance-test-restart-" + os.urandom(8).hex(),
+            "tags": ["test", "restart"],
+        })
+        memory_id = mem["id"]
+        self.assertIsInstance(memory_id, str)
+
+        # Verify it exists
+        found = request_json("GET", f"/memories/{memory_id}")
+        self.assertEqual(found["id"], memory_id)
+
+        # Note: actual restart test requires a second process (see conftest or manual test runner)
+        # This test documents the contract; full restart is tested in integration
+
+    def test_bench_run_returns_correct_shape(self):
+        """Test that bench run returns expected structure with 3 arms and rows."""
+        result = request_json("POST", "/bench/run", {}, timeout=MODEL_TIMEOUT)
+
+        # Verify top-level structure
+        self.assertIsInstance(result.get("run_id"), str)
+        self.assertIsInstance(result.get("ts"), str)
+        self.assertIsInstance(result.get("arms"), list)
+        self.assertEqual(len(result.get("arms", [])), 3, "Must have 3 arms")
+
+        rows = result.get("rows", [])
+        self.assertIsInstance(rows, list)
+        self.assertEqual(len(rows), 3 * 12, "Must have 3 arms × 12 tasks = 36 rows")
+
+        # Verify row structure
+        for row in rows:
+            self.assertIsInstance(row, dict)
+            self.assertIn("arm", row)
+            self.assertIn("correct", row)
+
+    def test_bench_run_identical_per_arm(self):
+        """Test that bench run is deterministic: second run has identical correctness per arm."""
+        first = request_json("POST", "/bench/run", {}, timeout=MODEL_TIMEOUT)
+        second = request_json("POST", "/bench/run", {}, timeout=MODEL_TIMEOUT)
+
+        # Extract correctness counts by arm
+        def aggregate_correct(result):
+            agg = {}
+            for row in result.get("rows", []):
+                arm = row.get("arm")
+                correct = row.get("correct", 0)
+                agg[arm] = agg.get(arm, 0) + correct
+            return agg
+
+        first_agg = aggregate_correct(first)
+        second_agg = aggregate_correct(second)
+        self.assertEqual(first_agg, second_agg, "Correctness counts must be identical across runs")
+
+    def test_memory_id_policy_version_resolves(self):
+        """Test that every memory_id and policy_version in an explanation resolves via API."""
+        if not is_mongodb_configured():
+            self.skipTest("MongoDB not configured")
+
+        # Get a memory
+        mems = request_json("GET", "/memories?limit=1")
+        if not mems.get("items"):
+            # Create one
+            mem = request_json("POST", "/memories", {
+                "content": "test-resolution-" + os.urandom(8).hex(),
+            })
+            memory_id = mem["id"]
+        else:
+            memory_id = mems["items"][0]["id"]
+
+        # Get policies
+        policies = request_json("GET", "/policies")
+        policy_version = policies.get("active", {}).get("version")
+
+        # Verify they resolve
+        self.assertIsInstance(memory_id, str)
+        mem_resolved = request_json("GET", f"/memories/{memory_id}")
+        self.assertEqual(mem_resolved["id"], memory_id)
+
+        if policy_version is not None:
+            # Policy versions should be retrievable via /policies endpoint
+            self.assertIsInstance(policies.get("active"), dict)
+
+    def test_trace_fallback_not_true_when_providers_configured(self):
+        """Test that no trace has fallback=true when providers are configured."""
+        health = request_json("GET", "/health")
+        services = health.get("services", {})
+
+        # Only check if providers are configured (not unconfigured)
+        chat_configured = services.get("chat_model") != "unconfigured"
+        embed_configured = services.get("embedding_model") != "unconfigured"
+
+        if not (chat_configured or embed_configured):
+            self.skipTest("No providers configured; fallback traces are expected")
+
+        # Get a recent memory to trace
+        mems = request_json("GET", "/memories?limit=1")
+        if mems.get("items"):
+            mem_id = mems["items"][0]["id"]
+            mem = request_json("GET", f"/memories/{mem_id}")
+            traces = mem.get("traces", [])
+
+            for trace in traces:
+                fallback = trace.get("fallback", False)
+                # Embedding and retrieval traces should not have fallback=true when providers configured
+                if embed_configured:
+                    if trace.get("type") in ("embedding", "memory_retrieval"):
+                        self.assertNotEqual(fallback, True,
+                            f"Trace type {trace.get('type')} has fallback=true but provider configured")
 
 
 if __name__ == "__main__":

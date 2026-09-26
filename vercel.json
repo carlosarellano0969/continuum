@@ -1,0 +1,21 @@
+{
+  "buildCommand": "npm run build --prefix apps/web",
+  "installCommand": "npm ci --prefix apps/web",
+  "framework": "vite",
+  "outputDirectory": "apps/web/dist",
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/index.py"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ],
+  "functions": {
+    "api/index.py": {
+      "maxDuration": 300
+    }
+  }
+}

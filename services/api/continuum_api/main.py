@@ -5,10 +5,22 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from .adapters import ChatModel, Embedder, OllamaAdapter, OllamaChatModel, OllamaEmbedder
+from .adapters import (
+    ChatModel,
+    DeterministicChatModel,
+    DeterministicEmbedder,
+    Embedder,
+    OllamaAdapter,
+    OllamaChatModel,
+    OllamaEmbedder,
+    OpenRouterChatModel,
+    VoyageEmbedder,
+)
+from .bench import BenchHarness
 from .config import Settings
 from .errors import ConflictError, ContinuumError, DependencyError, NotFoundError
 from .models import (
+    BenchRunRequest,
     DemoResetRequest,
     Identity,
     MemoryCreate,
@@ -18,6 +30,33 @@ from .models import (
 )
 from .repository import InMemoryRepository, MongoRepository, Repository
 from .service import ContinuumService
+
+
+def _build_chat_model(settings: Settings, ollama: OllamaAdapter) -> ChatModel:
+    if settings.model_provider == "openrouter":
+        return OpenRouterChatModel(
+            settings.openrouter_api_key,
+            model=settings.openrouter_chat_model,
+            fallback_model=settings.openrouter_chat_model_fallback,
+            max_output_tokens=settings.ollama_max_output_tokens,
+            reasoning_effort=settings.ollama_reasoning_effort,
+        )
+    if settings.model_provider == "deterministic":
+        return DeterministicChatModel()
+    return OllamaChatModel(ollama)
+
+
+def _build_embedder(settings: Settings, ollama: OllamaAdapter) -> Embedder:
+    if settings.embed_provider == "voyage":
+        return VoyageEmbedder(
+            settings.endpoint,
+            settings.model_api_key,
+            model=settings.voyage_embed_model,
+            dimensions=settings.embed_dimensions,
+        )
+    if settings.embed_provider == "deterministic":
+        return DeterministicEmbedder()
+    return OllamaEmbedder(ollama)
 
 
 def create_app(
@@ -46,12 +85,14 @@ def create_app(
         settings.ollama_max_output_tokens,
         settings.ollama_reasoning_effort,
     )
-    chat_model = chat_model or OllamaChatModel(ollama)
-    embedder = embedder or OllamaEmbedder(ollama)
+    chat_model = chat_model or _build_chat_model(settings, ollama)
+    embedder = embedder or _build_embedder(settings, ollama)
     service = ContinuumService(settings, repository, chat_model, embedder)
+    bench_harness = BenchHarness(service)
 
     app = FastAPI(title="Continuum V1 API", version="0.1.0")
     app.state.continuum_service = service
+    app.state.bench_harness = bench_harness
     app.add_middleware(
         CORSMiddleware,
         allow_origins=list(settings.cors_origins),
@@ -96,6 +137,9 @@ def create_app(
     def get_service(request: Request) -> ContinuumService:
         return request.app.state.continuum_service
 
+    def get_bench(request: Request) -> BenchHarness:
+        return request.app.state.bench_harness
+
     def get_identity(
         organization_id: Annotated[str | None, Header(alias="X-Organization-ID")] = None,
         agent_id: Annotated[str | None, Header(alias="X-Agent-ID")] = None,
@@ -107,6 +151,7 @@ def create_app(
         return Identity(organization_id=organization_id, agent_id=agent_id)
 
     Service = Annotated[ContinuumService, Depends(get_service)]
+    Bench = Annotated[BenchHarness, Depends(get_bench)]
     Scope = Annotated[Identity, Depends(get_identity)]
 
     @app.get("/api/health")
@@ -193,6 +238,22 @@ def create_app(
                 identity, decision_id=decision_id, event_type=event_type, limit=limit
             )
         }
+
+    @app.post("/api/bench/run")
+    async def run_bench(
+        identity: Scope,
+        bench: Bench,
+        body: BenchRunRequest = Body(default_factory=BenchRunRequest),
+    ) -> dict:
+        return await bench.run(identity, body.arms, body.repeats, body.task_limit)
+
+    @app.get("/api/bench/runs")
+    def list_bench_runs(identity: Scope, bench: Bench) -> dict:
+        return {"items": bench.list_runs(identity)}
+
+    @app.get("/api/bench/runs/{run_id}")
+    def get_bench_run(run_id: str, identity: Scope, bench: Bench) -> dict:
+        return bench.get_run(identity, run_id)
 
     return app
 
