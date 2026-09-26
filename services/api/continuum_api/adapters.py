@@ -5,6 +5,7 @@ import hashlib
 import json
 import math
 import time
+from pathlib import Path
 from typing import Annotated, Any, Protocol
 
 import httpx
@@ -18,6 +19,20 @@ OPENROUTER_TOTAL_TIMEOUT_SECONDS = 45.0
 # and repeated texts must not spend that budget.
 EMBED_HEALTH_TTL_SECONDS = 300.0
 EMBED_CACHE_MAX_ENTRIES = 512
+FIXTURE_DATA_DIR = Path(__file__).resolve().parents[3] / "data"
+
+
+def _load_embedding_fixtures(model_name: str) -> dict[str, list[float]]:
+    """Precomputed vectors (seed memories, bench tasks) keyed by sha256 of the embedded text."""
+    vectors: dict[str, list[float]] = {}
+    for path in sorted(FIXTURE_DATA_DIR.glob(f"*/*embeddings.{model_name}.json")):
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if payload.get("model") == model_name and isinstance(payload.get("vectors"), dict):
+            vectors.update(payload["vectors"])
+    return vectors
 
 
 class _ChatResponse(BaseModel):
@@ -258,6 +273,7 @@ class VoyageEmbedder:
         self._url = self._build_url(endpoint)
         self.timeout = httpx.Timeout(timeout_seconds, connect=min(timeout_seconds, 5.0))
         self.last_usage_tokens = 0
+        self._embed_cache: dict[str, list[float]] = _load_embedding_fixtures(model)
 
     @staticmethod
     def _build_url(endpoint: str | None) -> str | None:
@@ -287,13 +303,14 @@ class VoyageEmbedder:
         if not self.configured or not self._url:
             raise DependencyError("Voyage embeddings are unconfigured")
         cache: dict[str, list[float]] = self.__dict__.setdefault("_embed_cache", {})
-        if text in cache:
+        key = hashlib.sha256(text.encode("utf-8")).hexdigest()
+        if key in cache:
             self.last_usage_tokens = 0
-            return list(cache[text])
+            return list(cache[key])
         vector = await self._embed_remote(text)
         if len(cache) >= EMBED_CACHE_MAX_ENTRIES:
             cache.pop(next(iter(cache)))
-        cache[text] = vector
+        cache[key] = vector
         return list(vector)
 
     async def _embed_remote(self, text: str) -> list[float]:
@@ -373,7 +390,7 @@ class OpenRouterChatModel:
         if not self.configured:
             raise DependencyError("OpenRouter is unconfigured")
         evidence = [
-            {"id": memory.id, "content": memory.content, "confidence": memory.confidence}
+            {"id": memory.id, "content": memory.content}
             for memory in memories
         ]
         prompt = {
@@ -388,6 +405,19 @@ class OpenRouterChatModel:
                 "recommend the next safe step or a qualified human handoff."
             ),
         }
+        return await self._request(prompt)
+
+    async def complete(self, scenario: str) -> tuple[str, str]:
+        """Raw model call: the task and the answer format only, no Continuum grounding."""
+        if not self.configured:
+            raise DependencyError("OpenRouter is unconfigured")
+        prompt = {
+            "scenario": scenario,
+            "instruction": "Return only a JSON object with string keys recommendation and rationale.",
+        }
+        return await self._request(prompt)
+
+    async def _request(self, prompt: dict[str, Any]) -> tuple[str, str]:
         response_schema = {
             "type": "object",
             "properties": {
@@ -415,7 +445,7 @@ class OpenRouterChatModel:
                             "max_tokens": self._max_output_tokens,
                             "reasoning": {"effort": self._reasoning_effort},
                             "messages": [
-                                {"role": "user", "content": json.dumps(prompt, sort_keys=True)}
+                                {"role": "user", "content": json.dumps(prompt, sort_keys=True, separators=(",", ":"))}
                             ],
                             "response_format": {
                                 "type": "json_schema",

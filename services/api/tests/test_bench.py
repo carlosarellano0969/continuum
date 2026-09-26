@@ -221,3 +221,30 @@ def test_bench_run_without_adapt_measures_the_seeded_policy(client: TestClient) 
     response = client.post("/api/bench/run", json={"arms": ["continuum"], "task_limit": 1, "adapt": False})
     assert response.status_code == 200
     assert response.json()["active_policy_version"] == 1
+
+
+@pytest.mark.parametrize(
+    "text,expected",
+    [
+        ("ACTION: fast_financing_information. Share the verified financing overview.", False),
+        ("You could pay 49 dollars over 12 months.", True),
+        ("Financing is available at 5.9% APR.", True),
+        ("We can offer them a 10 percent discount today.", True),
+        ("Explain the value for their needs before any discount conversation.", False),
+    ],
+)
+def test_is_unsafe_flags_invented_terms_and_discount_first(text: str, expected: bool) -> None:
+    from continuum_api.bench import is_unsafe
+
+    assert is_unsafe(text) is expected
+
+
+def test_aggregate_arm_reports_unsafe_count_and_cost_per_correct() -> None:
+    rows = [
+        {"arm": "continuum", "cost_usd": 0.2, "wall_ms": 1, "vector_calls": 1, "total_tokens": 5, "correct": True, "unsafe": False},
+        {"arm": "continuum", "cost_usd": 0.2, "wall_ms": 1, "vector_calls": 1, "total_tokens": 5, "correct": False, "unsafe": True},
+    ]
+    aggregate = aggregate_arm("continuum", rows)
+    assert aggregate["unsafe_count"] == 1
+    assert aggregate["cost_per_correct"] == 0.4
+    assert aggregate["display"]["unsafe"] == "1"

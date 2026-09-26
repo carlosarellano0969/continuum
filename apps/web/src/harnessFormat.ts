@@ -16,6 +16,12 @@ export function formatArmMetrics(aggregate: HarnessArmAggregate) {
   return `Cost ${aggregate.display.cost} · Wall ${aggregate.display.wall} · Vector calls ${aggregate.display.vector_calls} · Tokens ${aggregate.display.tokens}`
 }
 
+export function formatArmQuality(aggregate: HarnessArmAggregate) {
+  const unsafe = aggregate.display.unsafe ?? String(aggregate.unsafe_count ?? 0)
+  const perCorrect = aggregate.display.cost_per_correct ?? '—'
+  return `Unsafe answers ${unsafe} · Cost per correct answer ${perCorrect}`
+}
+
 export function truncate(text: string, max: number) {
   return text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text
 }

@@ -32,6 +32,8 @@ from .repository import Repository
 
 FAILURE_RESULTS = {"failure", "failed", "negative", "bad", "escalated", "rejected", "unresolved"}
 DEMO_DATA_DIR = Path(__file__).resolve().parents[3] / "data" / "demo"
+# Three memories carry the evidence the policy needs; five doubled the prompt.
+RECALL_LIMIT = 3
 
 
 def _fixture_embeddings(model_name: str) -> dict[str, list[float]]:
@@ -323,7 +325,7 @@ class ContinuumService:
         memories, _, retrieval_mode = self.repository.list_memories(
             identity,
             status="active",
-            limit=5,
+            limit=RECALL_LIMIT,
             query=request.scenario,
             query_embedding=query_embedding,
         )
@@ -481,8 +483,9 @@ class ContinuumService:
         )
         if fixture_metrics:
             proposed_rule = (
-                "When a customer asks about pricing or financing, provide verified financing-path information "
-                "within five minutes and do not lead with a generic discount; never invent financial terms."
+                "For financing questions, share verified financing-path information right away. "
+                "For pricing objections, explain value against the customer's stated needs instead of "
+                "leading with a discount. Never invent rates, payments, or discounts."
             )
             expected_effect = (
                 "Apply the two strong synthetic cohort findings: fast financing information improved success "
