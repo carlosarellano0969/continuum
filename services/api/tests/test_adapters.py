@@ -330,3 +330,27 @@ def test_openrouter_raises_when_both_models_fail(monkeypatch: pytest.MonkeyPatch
     _install_transport(monkeypatch, lambda _: httpx.Response(503))
     with pytest.raises(DependencyError, match="OpenRouter chat request failed"):
         asyncio.run(_openrouter_chat().recommend("scenario", None, _policy(), []))
+
+
+
+def test_voyage_embedder_reuses_cached_embeddings_and_health(monkeypatch) -> None:
+    from continuum_api.adapters import VoyageEmbedder
+
+    embedder = VoyageEmbedder(endpoint="ai.mongodb.com", api_key="test-key", model="voyage-4-large")
+    calls: list[str] = []
+
+    async def fake_remote(text: str) -> list[float]:
+        calls.append(text)
+        return [0.1] * 1024
+
+    monkeypatch.setattr(embedder, "_embed_remote", fake_remote)
+
+    async def scenario() -> tuple[list[float], list[float], str, str]:
+        first = await embedder.embed("same text")
+        second = await embedder.embed("same text")
+        return first, second, await embedder.health(), await embedder.health()
+
+    first, second, health_one, health_two = asyncio.run(scenario())
+    assert first == second
+    assert health_one == health_two == "ok"
+    assert calls == ["same text", "healthcheck"]
