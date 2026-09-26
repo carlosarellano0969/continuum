@@ -82,6 +82,24 @@ Compares the same task, same model, temperature 0, across three arms so judges c
 - `docs/DEMO.md` — exact Windows runbook and three-minute demo
 - `docs/ATLAS_SETUP.md` — Atlas credentials, Vector Search index, and live-verification gate
 
+## Harness Bench results (measured today)
+
+Same model for every arm (`openai/gpt-oss-20b` via OpenRouter, temperature 0), same synthetic tasks, scored by the action label each arm names. Continuum is measured after its own loop: the seeded outcomes are analyzed and the resulting policy change is approved before any arm runs.
+
+**Full task set (12 tasks, run against the Atlas Sandbox at 14:05):**
+
+| Arm | Correct | Tokens | Cost |
+|---|---|---|---|
+| Out of the box (task only) | 83.3% | 4,983 | $0.0003 |
+| Context stuffing (whole history in the prompt) | 91.7% | 56,000 | $0.0086 |
+| **Continuum** (Atlas vector recall + approved policy) | **91.7%** | **8,265** | **$0.0020** |
+
+Continuum matches the accuracy of stuffing the whole history into the prompt with 6.8x fewer tokens and 4.3x lower cost, and every answer cites the memory IDs and policy version behind it. The out-of-the-box agent is cheapest but misses the pricing-objection case and falls for the partner-directory distractor.
+
+**Deployed URL, two consecutive live runs (3 tasks each):** identical correctness per arm (all 100%); Continuum did a real Atlas `$vectorSearch` on every task and used 2,483 tokens against 13,521 for context stuffing.
+
+Caveat: in the 12-task run about half of Continuum's retrievals fell back to keyword search because the hosted embeddings key was rate-limited (3 requests/minute without a billing method); the deployed runs above had no fallbacks.
+
 ## Deploy
 
 Continuum is deployed as a single unified service on Vercel (web app + API) with Render as the fallback API host.
