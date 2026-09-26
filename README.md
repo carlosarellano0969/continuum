@@ -13,13 +13,12 @@ Continuum is an inspectable memory and policy layer for long-running agents. The
 - **Data:** MongoDB Atlas Sandbox with Vector Search and `$vectorSearch` filters, synthetic labeled interactions
 - **Harness Bench:** Compares out-of-box, context-stuffing, and continuum arms on the same 12 synthetic tasks
 
-| Component | Built before | Built today |
-|---|---|---|
-| V1.1 app, local Ollama, in-memory repo, 47 API + 23 acceptance tests | ✓ | |
-| Atlas persistence, Vector Search with tenant/type filters | | ✓ PR #2 (L1) |
-| OpenRouter chat adapter, Voyage embeddings via ai.mongodb.com | | ✓ PR #2 (L1) |
-| Harness Bench (three arms, cost/wall/vectors/tokens/correctness per run) | | ✓ PR #3 (L2) |
-| Vercel deployment + CI | | ✓ PR #1 (L3) |
+| Component | Built today |
+|---|---|
+| Atlas persistence, Vector Search with tenant/type filters | ✓ PR #2 (L1) |
+| OpenRouter chat adapter, Voyage embeddings via ai.mongodb.com | ✓ PR #2 (L1) |
+| Harness Bench (three arms, cost/wall/vectors/tokens/correctness per run) | ✓ PR #3 (L2) |
+| Vercel deployment + CI | ✓ PR #1 (L3) |
 
 See [`docs/PROVENANCE.md`](docs/PROVENANCE.md) for full details.
 
