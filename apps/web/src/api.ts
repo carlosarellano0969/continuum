@@ -102,6 +102,49 @@ export interface ProposalDecisionResult {
   policy: Policy | null
 }
 
+export type HarnessArmName = 'out_of_box' | 'context_stuffing' | 'continuum'
+
+export interface HarnessArm {
+  arm: HarnessArmName
+  cost_usd: number
+  wall_ms: number
+  vector_calls: number
+  tokens: number
+  correct_pct: number
+  display: { cost: string; wall: string; vector_calls: string; tokens: string }
+}
+
+export interface HarnessRow {
+  arm: HarnessArmName
+  task_id: string
+  action: string
+  expected_action: string
+  correct: boolean
+  wall_ms: number
+  total_tokens: number
+  cost_usd: number
+  vector_calls: number
+  policy_version: string | number | null
+  memory_ids: string[]
+}
+
+export interface HarnessRun {
+  run_id: string
+  ts: string
+  model: string
+  seed: number
+  arms: HarnessArm[]
+  rows: HarnessRow[]
+  traces?: Array<Record<string, unknown>>
+}
+
+function unwrapHarnessRuns(payload: unknown): HarnessRun[] {
+  if (Array.isArray(payload)) return payload as HarnessRun[]
+  if (typeof payload === 'object' && payload !== null && 'items' in payload && Array.isArray(payload.items)) return payload.items as HarnessRun[]
+  if (typeof payload === 'object' && payload !== null && 'runs' in payload && Array.isArray(payload.runs)) return payload.runs as HarnessRun[]
+  return []
+}
+
 const baseUrl = import.meta.env.VITE_API_BASE_URL ?? '/api'
 
 export class ApiError extends Error {
@@ -138,6 +181,8 @@ export const api = {
   policies: () => request<{ active: Policy | null; history: Policy[] }>('/policies'),
   proposals: () => request<{ items: GuardrailProposal[] }>('/proposals'),
   auditEvents: () => request<{ items: AuditEvent[] }>('/audit-events?limit=12'),
+  benchRuns: async () => unwrapHarnessRuns(await request<unknown>('/bench/runs')),
+  runBench: () => request<HarnessRun>('/bench/run', { method: 'POST', body: JSON.stringify({}) }),
   recommend: (scenario: string) => request<Recommendation>('/recommendations', { method: 'POST', body: JSON.stringify({ scenario }) }),
   explanation: (id: string) => request<Explanation>(`/decisions/${encodeURIComponent(id)}/explanation`),
   decideProposal: (id: string, decision: 'approve' | 'reject', note?: string) =>
