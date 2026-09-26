@@ -58,8 +58,8 @@ describe('harness format helpers', () => {
     const [raw, stuffing] = continuumComparisons(stubSummary)
     expect(raw).toEqual({ label: 'Out of the box', points: 28, tokenRatio: 500 / 700 })
     expect(formatPoints(stuffing.points)).toBe('+11 pts')
-    expect(formatRatio(stuffing.tokenRatio)).toBe('8.0× more')
-    expect(formatRatio(raw.tokenRatio)).toBe('1.4× fewer')
+    expect(formatRatio(stuffing.tokenRatio)).toBe('8.0× fewer')
+    expect(formatRatio(raw.tokenRatio)).toBe('1.4× more')
   })
 })
 

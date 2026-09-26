@@ -105,7 +105,8 @@ export function formatPoints(points: number) {
 
 export function formatRatio(ratio: number | null) {
   if (ratio == null) return '—'
-  return ratio >= 1 ? `${ratio.toFixed(1)}× more` : `${(1 / ratio).toFixed(1)}× fewer`
+  // ratio = other arm's tokens per correct answer ÷ Continuum's, phrased from Continuum's side.
+  return ratio >= 1 ? `${ratio.toFixed(1)}× fewer` : `${(1 / ratio).toFixed(1)}× more`
 }
 
 // A short live run so it fits inside a serverless function's time limit.
