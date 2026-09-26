@@ -15,6 +15,7 @@ Atlas is configured, else an in-memory list).
 from __future__ import annotations
 
 import json
+import re
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -22,7 +23,7 @@ from typing import Any
 from uuid import uuid4
 
 from .errors import ConflictError, DependencyError, NotFoundError
-from .models import Identity, Memory, Policy, RecommendationRequest, utc_now
+from .models import Identity, Memory, Policy, ProposalDecisionRequest, RecommendationRequest, utc_now
 from .service import ContinuumService
 
 BENCH_DATA_DIR = Path(__file__).resolve().parents[3] / "data" / "bench"
@@ -50,19 +51,42 @@ ACTION_KEYWORDS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("generic_discount_first_reply", ("generic_discount_first_reply", "generic discount-first")),
 )
 
+ALLOWED_ACTIONS: tuple[str, ...] = tuple(action for action, _ in ACTION_KEYWORDS)
+
+# Appended identically to every arm's scenario so all three are scored the
+# same way: the model names one label, the harness parses it.
+LABEL_INSTRUCTION = (
+    "\n\nAnswer format: start the recommendation with one line 'ACTION: <label>', where <label> is exactly "
+    "one of: " + ", ".join(ALLOWED_ACTIONS) + ". Then give the recommendation in one or two sentences."
+)
+
+_ACTION_LINE = re.compile(r"action\s*[:=]\s*[`'\"*\s]*([a-z_]+)", re.IGNORECASE)
+
+BENCH_ACTOR = "harness-bench"
+RECOMMENDATION_CHARS = 300
+RATIONALE_CHARS = 200
+
 
 def extract_action(text: str) -> str:
-    """Best-effort action label extraction from model output text.
+    """Action label extraction from model output text.
 
-    Deterministic providers echo policy/memory text verbatim, so a substring
-    match against known evidence phrases is enough to score correctness
-    without needing a structured tool-call response from the model.
+    Every arm is asked to open with 'ACTION: <label>'; that line wins. The
+    keyword table is the fallback for providers that echo evidence verbatim
+    (the deterministic adapter) or ignore the format.
     """
-    lowered = text.lower()
+    for match in _ACTION_LINE.finditer(text or ""):
+        label = match.group(1).lower()
+        if label in ALLOWED_ACTIONS:
+            return label
+    lowered = (text or "").lower()
     for action, keywords in ACTION_KEYWORDS:
         if any(keyword in lowered for keyword in keywords):
             return action
     return NO_ACTION
+
+
+def labelled_scenario(task: dict[str, Any]) -> str:
+    return f"{task['scenario']}{LABEL_INSTRUCTION}"
 
 
 def load_tasks() -> list[dict[str, Any]]:
@@ -231,20 +255,20 @@ class BenchHarness:
 
     async def _run_arm_a(self, identity: Identity, task: dict[str, Any]) -> _CallResult:
         policy = _stub_policy(identity)
-        recommendation, rationale, model_name = await _call_chat(self._service, task["scenario"], policy, [])
+        recommendation, rationale, model_name = await _call_chat(self._service, labelled_scenario(task), policy, [])
         usage = _usage_from_model(self._service.chat_model)
         return _CallResult(recommendation, rationale, model_name, policy.version, [], 0, usage)
 
     async def _run_arm_b(self, identity: Identity, task: dict[str, Any]) -> _CallResult:
         policy = _stub_policy(identity)
         memories = self._context(identity)
-        recommendation, rationale, model_name = await _call_chat(self._service, task["scenario"], policy, memories)
+        recommendation, rationale, model_name = await _call_chat(self._service, labelled_scenario(task), policy, memories)
         usage = _usage_from_model(self._service.chat_model)
         cited = [memory.id for memory in memories[:2]]
         return _CallResult(recommendation, rationale, model_name, policy.version, cited, 0, usage)
 
     async def _run_arm_c(self, identity: Identity, task: dict[str, Any]) -> _CallResult:
-        request = RecommendationRequest(scenario=task["scenario"])
+        request = RecommendationRequest(scenario=labelled_scenario(task))
         response = await self._service.recommend(identity, request)
         chat_entry = next((t for t in response.tool_trace if t.get("tool") == "chat"), {})
         embed_entry = next((t for t in response.tool_trace if t.get("tool") == "embed"), {})
@@ -290,6 +314,8 @@ class BenchHarness:
             "vector_calls": result.vector_calls,
             "policy_version": result.policy_version,
             "memory_ids": result.memory_ids,
+            "recommendation": (result.recommendation or "")[:RECOMMENDATION_CHARS],
+            "rationale": (result.rationale or "")[:RATIONALE_CHARS],
             "ts": ts,
             "run_id": run_id,
             "synthetic": True,
@@ -301,6 +327,7 @@ class BenchHarness:
         arms: list[str] | None,
         repeats: int,
         task_limit: int | None = None,
+        adapt: bool = True,
     ) -> dict[str, Any]:
         arms = list(arms) if arms else list(ALL_ARMS)
         for arm in arms:
@@ -308,6 +335,10 @@ class BenchHarness:
                 raise ConflictError(f"unknown bench arm: {arm}")
         seed = self._service.settings.demo_seed
         await self._service.reset_demo(identity, seed)
+        # Continuum is measured in its governed, adapted state: the seeded
+        # outcomes are analyzed and the resulting proposal is approved before
+        # any arm runs. Arms A and B never see policy or memory either way.
+        active_policy_version = self._adapt(identity) if adapt else self._active_version(identity)
         tasks = load_tasks()
         if task_limit is not None:
             # Fixed task order is preserved (load_tasks returns the fixture in
@@ -331,11 +362,33 @@ class BenchHarness:
             "synthetic": True,
             "arms": arms,
             "task_count": len(tasks),
+            "adapted": adapt,
+            "active_policy_version": active_policy_version,
             "rows": rows,
             "aggregates": {arm: aggregate_arm(arm, rows) for arm in arms},
         }
         self._store(identity, document)
         return document
+
+    def _active_version(self, identity: Identity) -> int:
+        active, _ = self._service.repository.get_policies(identity)
+        return active.version if active is not None else 0
+
+    def _adapt(self, identity: Identity) -> int:
+        result = self._service.analyze_proposals(identity)
+        proposal = result.get("proposal") if isinstance(result, dict) else None
+        if isinstance(proposal, dict):
+            proposal_id, state = proposal.get("id"), proposal.get("state")
+        else:
+            proposal_id, state = getattr(proposal, "id", None), getattr(proposal, "state", None)
+        if proposal_id and state == "pending":
+            decision = ProposalDecisionRequest(
+                decision="approve",
+                actor=BENCH_ACTOR,
+                note="Harness Bench: approve the seeded proposal before measuring.",
+            )
+            self._service.decide_proposal(identity, proposal_id, decision)
+        return self._active_version(identity)
 
     def _store(self, identity: Identity, document: dict[str, Any]) -> None:
         scoped = {**document, "organization_id": identity.organization_id, "agent_id": identity.agent_id}

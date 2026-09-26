@@ -245,7 +245,7 @@ def create_app(
         bench: Bench,
         body: BenchRunRequest = Body(default_factory=BenchRunRequest),
     ) -> dict:
-        return await bench.run(identity, body.arms, body.repeats, body.task_limit)
+        return await bench.run(identity, body.arms, body.repeats, body.task_limit, body.adapt)
 
     @app.get("/api/bench/runs")
     def list_bench_runs(identity: Scope, bench: Bench) -> dict:
