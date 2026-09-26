@@ -170,3 +170,102 @@ html { scroll-behavior: smooth; }
   .harness-table-heading select { flex: 1; }
   .harness-run-meta { gap: 6px 12px; font-size: 10px; }
 }
+
+/* Compact dashboard: use the evidence loop as a top rail and keep primary panels in view. */
+.layout { display: block; max-width: none; }
+.sidebar { position: sticky; top: 68px; z-index: 4; height: auto; min-height: 0; display: flex; flex-direction: row; align-items: center; gap: 3px; padding: 6px clamp(16px, 3vw, 40px); border-right: 0; border-bottom: 1px solid #d9ddd5; background: rgba(248,248,243,.96); backdrop-filter: blur(12px); overflow-x: auto; scrollbar-width: none; }
+.sidebar::-webkit-scrollbar { display: none; }
+.rail-label { display: none; }
+.nav-link { flex: none; min-height: 38px; gap: 8px; padding: 6px 10px; border-radius: 7px; }
+.nav-link:not(:last-of-type)::after { display: none; }
+.nav-link > span { width: 21px; height: 21px; }
+.nav-link small { display: none; }
+.sidebar-foot { display: flex; align-items: center; gap: 8px; margin: 0 0 0 auto; padding: 0 8px; border: 0; line-height: 1; white-space: nowrap; font-size: 10px; }
+.sidebar-foot .eyebrow, .sidebar-foot small { display: none; }
+.workspace { max-width: 1600px; margin: 0 auto; padding: 20px clamp(18px, 2.5vw, 38px) 34px; }
+.overview { gap: 22px; margin: 0 0 16px; padding: 0 2px 15px; }
+.overview h1 { margin: 4px 0 7px; font-size: clamp(32px, 3.7vw, 48px); }
+.overview-copy > p:last-child { font-size: 12px; line-height: 1.45; }
+.proof-strip { max-width: none; }
+.proof-strip > div { padding: 10px; }
+.proof-strip strong { font-size: 21px; }
+.proof-strip span { margin-top: 3px; }
+.control-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); grid-template-areas: "decide decide explain explain harness harness" "remember remember remember govern govern govern"; gap: 13px; }
+.panel-decide { grid-area: decide; }
+.panel-explain { grid-area: explain; }
+.panel-harness { grid-area: harness; }
+.panel-remember { grid-area: remember; }
+.panel-govern { grid-area: govern; }
+.workspace-panel { padding: 18px; border-radius: 12px; }
+.page-heading { margin-bottom: 14px; }
+.page-heading h2 { font-size: clamp(24px, 2vw, 31px); }
+.page-heading > div > p:last-child { font-size: 12px; line-height: 1.4; }
+.scenario-card { padding: 15px; }
+.scenario-card textarea { min-height: 70px; }
+.form-row { margin-top: 8px; }
+.explanation-empty { min-height: 170px; padding: 17px; }
+.explanation-empty h3 { margin-top: 10px; }
+.memory-list { max-height: 220px; overflow-y: auto; padding-right: 3px; }
+.memory-card { padding: 12px 14px; }
+.memory-card > p { margin: 8px 0; line-height: 1.4; font-size: 12px; }
+.split-panel { grid-template-columns: 1fr 1fr; }
+.split-panel > div { min-width: 0; padding: 15px; }
+.split-panel .section-heading h3 { font-size: 18px; }
+.timeline, .audit-list { max-height: 180px; overflow-y: auto; padding-right: 4px; }
+.timeline li { padding-bottom: 11px; }
+.proposal-card { padding: 16px; margin-bottom: 12px; }
+.rule-diff { margin: 12px 0; }
+.proposal-evidence { padding: 10px 0; }
+.harness-heading { margin-bottom: 10px; }
+.harness-heading > div > p:last-child { font-size: 11px; }
+.harness-provenance { margin-bottom: 10px; padding: 8px 0; gap: 5px 10px; font-size: 9px; }
+.harness-run-meta { gap: 4px 10px; margin-bottom: 8px; font-size: 9px; }
+.harness-cards { gap: 6px; }
+.harness-arm-card { padding: 9px; }
+.harness-arm-card .eyebrow { font-size: 8px; }
+.harness-metrics { margin: 6px 0; font-size: 8px; line-height: 1.4; }
+.harness-correct { font-size: 19px; }
+.harness-table-heading { margin: 12px 0 7px; }
+.harness-table-heading h3 { font-size: 17px; }
+.harness-table-wrap { max-height: 180px; overflow: auto; }
+.harness-table th, .harness-table td { padding: 7px; }
+
+@media (min-width: 761px) and (max-width: 1180px) {
+  .workspace { padding-top: 16px; }
+  .overview { grid-template-columns: 1fr; gap: 13px; }
+  .proof-strip { max-width: 100%; }
+  .control-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-areas: "decide explain" "remember govern" "harness harness"; gap: 12px; }
+  .panel-decide, .panel-explain, .panel-remember, .panel-govern, .panel-harness { grid-column: auto; }
+  .panel-harness .harness-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (max-width: 760px) {
+  .sidebar { top: 68px; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 2px; padding: 4px 8px; }
+  .nav-link { min-width: 0; min-height: 38px; flex-direction: column; justify-content: center; gap: 2px; padding: 2px 0; }
+  .nav-link > span { width: 17px; height: 17px; font-size: 8px; }
+  .nav-link > div { display: block; }
+  .nav-link strong { font-size: 9px; white-space: nowrap; }
+  .sidebar-foot { display: none; }
+  .workspace { padding: 14px 12px 24px; }
+  .overview { gap: 12px; margin-bottom: 13px; padding-bottom: 12px; }
+  .overview h1 { font-size: clamp(30px, 9vw, 42px); }
+  .overview-copy > p:last-child { font-size: 11px; }
+  .control-grid { grid-template-columns: minmax(0, 1fr); grid-template-areas: "decide" "explain" "harness" "remember" "govern"; gap: 10px; }
+  .workspace-panel { padding: 15px; }
+  .panel-harness .harness-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .panel-harness .harness-arm-card { padding: 8px; }
+  .panel-harness .harness-arm-card:last-child { grid-column: 1 / -1; }
+  .panel-harness .harness-metrics { font-size: 9px; }
+  .memory-list, .timeline, .audit-list { max-height: 240px; }
+}
+
+@media (max-width: 430px) {
+  .topbar { height: 56px; padding: 0 12px; }
+  .sidebar { top: 56px; }
+  .workspace-panel { padding: 13px; }
+  .harness-provenance { font-size: 8px; }
+  .harness-run-meta { font-size: 8px; }
+  .harness-arm-card .eyebrow { font-size: 7px; letter-spacing: .02em; }
+  .split-panel { grid-template-columns: 1fr; }
+  .split-panel > div + div { border-left: 0; border-top: 1px solid #dce2da; }
+}
