@@ -14,8 +14,11 @@ The hackathon rules require that judges can clearly identify the work created du
 | Atlas-native persistence, `$vectorSearch` with tenant filters, restart persistence, approval transaction, verified on the Atlas Sandbox | `services/api/continuum_api/repository.py`, `docs/ATLAS_SETUP.md` | merged (PR #2, L1) |
 | Hosted model path: OpenRouter chat adapter, `voyage-4-large` embeddings via `ai.mongodb.com` (1024 dims) | `services/api/continuum_api/adapters.py` | merged (PR #2, L1) |
 | **Harness Bench**: same task set through out-of-the-box / context-stuffing / Continuum arms; cost, wall, vector calls, tokens, correctness per arm; stored in `bench_runs` | `services/api/continuum_api/bench.py`, `/api/bench/*` | merged (PR #3, L2) |
-| Harness report panel | `apps/web/src/` | in progress (W1) |
+| Harness report panel | `apps/web/src/HarnessReport.tsx` | merged (PR #9, W1) |
 | Deployed URL (Vercel), CI | `vercel.json`, `.github/workflows/` | merged (PR #1, L3) |
-| Acceptance/QA | tests/ | in progress (Q1) |
+| Acceptance/QA: suite runs against any `BASE_URL`, reset script, secret scan | `tests/acceptance/`, `scripts/` | merged (PRs #5, #13) |
+| Bench hardening: cost display, `task_limit`, run script, action-label scoring, adapt-before-measure, bounded model calls | `services/api/continuum_api/bench.py`, `scripts/run_bench.py` | merged (PRs #6, #7) |
+| Rate-limit fixes: cached health and embeddings, precomputed seed-memory vectors | `adapters.py`, `service.py`, `data/demo/memory_embeddings.voyage-4-large.json` | merged (PRs #11, #12) |
+| Deployment fixes: function duration, deployed URL in docs | `vercel.json`, docs | merged (PRs #8, #10) |
 
 All data is synthetic and labeled `synthetic: true`. See docs/SUBMISSION.md for the deployed URL.
