@@ -7,6 +7,7 @@ import argparse
 import json
 import os
 import sys
+import time
 import urllib.error
 import urllib.request
 from typing import Any
@@ -61,8 +62,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--base-url",
-        default=os.environ.get("CONTINUUM_API_BASE_URL", DEFAULT_BASE_URL),
-        help=f"API base URL (default: CONTINUUM_API_BASE_URL or {DEFAULT_BASE_URL})",
+        default=os.environ.get("BASE_URL", os.environ.get("CONTINUUM_API_BASE_URL", DEFAULT_BASE_URL)),
+        help=f"API base URL (default: BASE_URL, CONTINUUM_API_BASE_URL, or {DEFAULT_BASE_URL})",
     )
     parser.add_argument(
         "--seed",
@@ -95,6 +96,7 @@ def main() -> int:
         print("--timeout must be greater than zero", file=sys.stderr)
         return 2
     try:
+        start = time.time()
         reset = _request(
             args.base_url,
             "/demo/reset",
@@ -114,6 +116,8 @@ def main() -> int:
                 organization_id=args.organization_id,
                 agent_id=args.agent_id,
             )
+        elapsed = time.time() - start
+        output["elapsed_seconds"] = round(elapsed, 2)
     except RuntimeError as exc:
         print(f"reset failed: {exc}", file=sys.stderr)
         return 1

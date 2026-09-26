@@ -21,3 +21,4 @@ artifacts/
 *.safetensors
 .ollama/
 
+wt/
