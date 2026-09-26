@@ -188,7 +188,7 @@ export function App() {
               <PolicyHistory policies={data.policies.history} active={data.policies.active} proposal={activeProposal ?? null} audit={data.audit} busy={working === 'proposal'} locked={working !== null} onDecision={decide} />
             </section>
             <section id="harness" className="workspace-panel panel-harness" aria-labelledby="harness-title">
-              <HarnessReport health={data.health} onFocusRemember={focusRemember} onFocusExplain={focusExplanation} />
+              <HarnessReport onFocusRemember={focusRemember} onFocusExplain={focusExplanation} />
             </section>
           </div>
         </>}

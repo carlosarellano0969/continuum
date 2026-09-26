@@ -58,11 +58,7 @@ html { scroll-behavior: smooth; }
 .panel-harness { grid-column: 1 / -1; }
 .harness-heading { align-items: center; }
 .harness-heading > div { min-width: 0; }
-.harness-provenance { display: flex; align-items: center; flex-wrap: wrap; gap: 9px 20px; padding: 12px 0; margin-bottom: 18px; border-top: 1px solid #e1e7df; border-bottom: 1px solid #e1e7df; color: #60766e; font: 11px 'DM Mono', monospace; }
-.harness-provenance span:not(.badge) { display: flex; gap: 6px; }
-.harness-provenance strong { color: #2f594e; }
-.fallback-badge { background: #f9ded8; color: #993d30; }
-.harness-run-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 18px; margin-bottom: 14px; color: #74847e; font: 10px 'DM Mono', monospace; }
+.harness-run-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 18px; padding: 12px 0; margin-bottom: 14px; border-top: 1px solid #e1e7df; border-bottom: 1px solid #e1e7df; color: #60766e; font: 11px 'DM Mono', monospace; }
 .harness-run-meta code { color: #28685d; overflow-wrap: anywhere; }
 .harness-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .harness-arm-card { min-width: 0; padding: 15px; border: 1px solid #d9e2da; border-top: 3px solid #4da081; border-radius: 9px; background: rgba(255,255,251,.76); }
@@ -79,7 +75,7 @@ html { scroll-behavior: smooth; }
 .harness-table { width: 100%; min-width: 1040px; border-collapse: collapse; }
 .harness-table th { padding: 9px 10px; color: #667b73; background: #e7efe7; font: 600 9px 'DM Mono', monospace; text-align: left; text-transform: uppercase; white-space: nowrap; }
 .harness-table td { max-width: 240px; padding: 10px; color: #5b7068; border-top: 1px solid #e2e8e2; font-size: 11px; vertical-align: top; overflow-wrap: anywhere; }
-.harness-table td:nth-child(2), .harness-table td:nth-child(5), .harness-table td:nth-child(6), .harness-table td:nth-child(7), .harness-table td:nth-child(8) { white-space: nowrap; }
+.harness-table td:nth-child(2), .harness-table td:nth-child(5), .harness-table td:nth-child(6) { white-space: nowrap; }
 .harness-table td small { display: block; margin-top: 5px; color: #84938d; line-height: 1.4; }
 .harness-table a { color: #176e63; text-underline-offset: 2px; }
 .harness-memory-link { display: block; max-width: 170px; margin: 0 0 4px; overflow-wrap: anywhere; font: 10px 'DM Mono', monospace; }
@@ -172,5 +168,5 @@ html { scroll-behavior: smooth; }
   .harness-table-heading { align-items: flex-start; flex-direction: column; }
   .harness-table-heading label { justify-content: space-between; width: 100%; }
   .harness-table-heading select { flex: 1; }
-  .harness-provenance { gap: 8px 12px; font-size: 10px; }
+  .harness-run-meta { gap: 6px 12px; font-size: 10px; }
 }

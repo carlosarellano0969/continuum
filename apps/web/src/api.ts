@@ -104,15 +104,25 @@ export interface ProposalDecisionResult {
 
 export type HarnessArmName = 'out_of_box' | 'context_stuffing' | 'continuum'
 
-export interface HarnessArm {
-  arm: HarnessArmName
+export interface HarnessArmDisplay {
+  cost: string
+  wall: string
+  vector_calls: string
+  tokens: string
+}
+
+// Aggregate metrics for a single arm. The API keys these by arm name in a
+// dict (`document.aggregates[arm]`), not as a list of `{arm, ...}` objects.
+export interface HarnessArmAggregate {
   cost_usd: number
   wall_ms: number
   vector_calls: number
   tokens: number
   correct_pct: number
-  display: { cost: string; wall: string; vector_calls: string; tokens: string }
+  display: HarnessArmDisplay
 }
+
+export type HarnessAggregates = Partial<Record<HarnessArmName, HarnessArmAggregate>>
 
 export interface HarnessRow {
   arm: HarnessArmName
@@ -126,22 +136,43 @@ export interface HarnessRow {
   vector_calls: number
   policy_version: string | number | null
   memory_ids: string[]
+  // Arriving with a follow-up PR; render when present, tolerate absence.
+  recommendation?: string
+  rationale?: string
 }
 
-export interface HarnessRun {
+// Shape returned by GET /api/bench/runs (list): no `rows`.
+export interface HarnessRunSummary {
   run_id: string
   ts: string
   model: string
-  seed: number
-  arms: HarnessArm[]
-  rows: HarnessRow[]
-  traces?: Array<Record<string, unknown>>
+  seed?: number
+  arms: HarnessArmName[]
+  task_count: number
+  aggregates: HarnessAggregates
+  // Arriving with a follow-up PR; render when present, tolerate absence.
+  active_policy_version?: string | number | null
+  adapted?: boolean
 }
 
-function unwrapHarnessRuns(payload: unknown): HarnessRun[] {
-  if (Array.isArray(payload)) return payload as HarnessRun[]
-  if (typeof payload === 'object' && payload !== null && 'items' in payload && Array.isArray(payload.items)) return payload.items as HarnessRun[]
-  if (typeof payload === 'object' && payload !== null && 'runs' in payload && Array.isArray(payload.runs)) return payload.runs as HarnessRun[]
+// Shape returned by GET /api/bench/runs/{id} and POST /api/bench/run: full
+// document including per-task rows.
+export interface HarnessRun extends HarnessRunSummary {
+  rows: HarnessRow[]
+}
+
+export interface RunBenchOptions {
+  arms?: HarnessArmName[]
+  repeats?: number
+  task_limit?: number
+  adapt?: boolean
+}
+
+function unwrapHarnessRuns(payload: unknown): HarnessRunSummary[] {
+  if (Array.isArray(payload)) return payload as HarnessRunSummary[]
+  if (typeof payload === 'object' && payload !== null && 'items' in payload && Array.isArray((payload as { items: unknown }).items)) {
+    return (payload as { items: HarnessRunSummary[] }).items
+  }
   return []
 }
 
@@ -182,7 +213,8 @@ export const api = {
   proposals: () => request<{ items: GuardrailProposal[] }>('/proposals'),
   auditEvents: () => request<{ items: AuditEvent[] }>('/audit-events?limit=12'),
   benchRuns: async () => unwrapHarnessRuns(await request<unknown>('/bench/runs')),
-  runBench: () => request<HarnessRun>('/bench/run', { method: 'POST', body: JSON.stringify({}) }),
+  benchRun: (runId: string) => request<HarnessRun>(`/bench/runs/${encodeURIComponent(runId)}`),
+  runBench: (options: RunBenchOptions = {}) => request<HarnessRun>('/bench/run', { method: 'POST', body: JSON.stringify(options) }),
   recommend: (scenario: string) => request<Recommendation>('/recommendations', { method: 'POST', body: JSON.stringify({ scenario }) }),
   explanation: (id: string) => request<Explanation>(`/decisions/${encodeURIComponent(id)}/explanation`),
   decideProposal: (id: string, decision: 'approve' | 'reject', note?: string) =>
