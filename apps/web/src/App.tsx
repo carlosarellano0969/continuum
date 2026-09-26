@@ -3,6 +3,7 @@ import type { FormEvent, ReactNode, RefObject } from 'react'
 import { api, ApiError, type AuditEvent, type DemoSummary, type Explanation, type GuardrailProposal, type Health, type Memory, type Policy, type Recommendation } from './api'
 import { dependencyNotice } from './dependencyNotice'
 import { toolTraceRows } from './toolTrace'
+import { HarnessReport } from './HarnessReport'
 
 type LoadState = 'loading' | 'ready' | 'error'
 
@@ -58,6 +59,7 @@ export function App() {
   const [working, setWorking] = useState<'recommendation' | 'explanation' | 'proposal' | 'reset' | null>(null)
   const [notice, setNotice] = useState('')
   const explanationHeading = useRef<HTMLHeadingElement>(null)
+  const rememberHeading = useRef<HTMLHeadingElement>(null)
 
   const load = useCallback(async () => {
     setState('loading'); setError('')
@@ -110,6 +112,13 @@ export function App() {
     }, 0)
   }
 
+  function focusRemember() {
+    window.setTimeout(() => {
+      rememberHeading.current?.focus()
+      rememberHeading.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
+    }, 0)
+  }
+
   function inspectExplanation(decisionId?: string) {
     if (decisionId && explanation?.decision_id === decisionId) { focusExplanation(); return }
     void showExplanation(decisionId)
@@ -154,6 +163,7 @@ export function App() {
         <a className="nav-link" href="#explain"><span>02</span><div><strong>Explain</strong><small>Inspect the change</small></div></a>
         <a className="nav-link" href="#remember"><span>03</span><div><strong>Remember</strong><small>Review evidence</small></div></a>
         <a className="nav-link" href="#govern"><span>04</span><div><strong>Govern</strong><small>Approve policy</small></div></a>
+        <a className="nav-link" href="#harness" aria-label="Harness report"><span>05</span><div><strong>Harness</strong><small>Compare runs</small></div></a>
         <div className="sidebar-foot"><span className="eyebrow">SYSTEM</span><div><span className={`dot ${data?.health.status === 'ok' ? 'ok' : 'warn'}`} /> {data ? statusLabel(data.health.status) : 'checking'}</div><small>API {data?.health.version ?? '—'}</small></div>
       </nav>
 
@@ -172,10 +182,13 @@ export function App() {
               <ExplanationPanel explanation={explanation} latestDecisionId={data.summary.latest_decision?.id} busy={working === 'explanation'} locked={working !== null} onLoad={showExplanation} headingRef={explanationHeading} />
             </section>
             <section id="remember" className="workspace-panel panel-remember" aria-labelledby="remember-title">
-              <MemoryInspector memories={data.memories} />
+              <MemoryInspector memories={data.memories} headingRef={rememberHeading} />
             </section>
             <section id="govern" className="workspace-panel panel-govern" aria-labelledby="govern-title">
               <PolicyHistory policies={data.policies.history} active={data.policies.active} proposal={activeProposal ?? null} audit={data.audit} busy={working === 'proposal'} locked={working !== null} onDecision={decide} />
+            </section>
+            <section id="harness" className="workspace-panel panel-harness" aria-labelledby="harness-title">
+              <HarnessReport onFocusRemember={focusRemember} onFocusExplain={focusExplanation} />
             </section>
           </div>
         </>}
@@ -219,12 +232,12 @@ function ExplanationView({ explanation }: { explanation: Explanation }) {
   return <section className="explanation-card" aria-label="Decision explanation"><div className="section-heading"><div><p className="eyebrow">EXPLANATION CHAIN</p><h3>Why did you change your mind?</h3></div><Badge tone={explanation.after ? 'good' : 'neutral'}>{explanation.after ? 'Change recorded' : 'Current decision'}</Badge></div><p>{explanation.summary}</p><div className="change-grid"><article><span className="eyebrow">BEFORE</span><p>{explanation.before ? `Policy v${explanation.before.version}: ${explanation.before.rule}` : 'No prior policy version was recorded for this decision.'}</p></article><article><span className="eyebrow">AFTER</span><p>{explanation.after ? `Policy v${explanation.after.version}: ${explanation.after.rule}` : 'No approved successor policy exists yet.'}</p></article></div>{approver && <p className="rationale">Approved by {approver}; supporting outcome and audit identifiers are retained below.</p>}<div className="trace"><div><strong>{explanation.memories.length}</strong><span> memories cited</span></div><div><strong>{explanation.policy_chain.length}</strong><span> policy versions</span></div><div><strong>{explanation.outcomes.length}</strong><span> recorded outcomes</span></div><div><strong>{explanation.audit_event_ids.length}</strong><span> audit events</span></div></div></section>
 }
 
-function MemoryInspector({ memories }: { memories: Memory[] }) {
+function MemoryInspector({ memories, headingRef }: { memories: Memory[]; headingRef: RefObject<HTMLHeadingElement | null> }) {
   const [query, setQuery] = useState('')
   const [expanded, setExpanded] = useState(false)
   const visible = memories.filter((memory) => `${memory.content} ${memory.type} ${memory.provenance}`.toLowerCase().includes(query.toLowerCase()))
   const shown = expanded ? visible : visible.slice(0, 4)
-  return <><div className="page-heading"><div><p className="eyebrow">03 · REMEMBER</p><h2 id="remember-title">Inspect the evidence</h2><p>Review only the memories scoped to this organization and agent.</p></div><Badge>{memories.length} loaded</Badge></div><label className="search"><span aria-hidden>⌕</span><input value={query} onChange={(event) => { setQuery(event.target.value); setExpanded(false) }} placeholder="Filter memories" aria-label="Filter memories" /></label><section className="memory-list">{shown.length ? shown.map((memory) => <article className="memory-card" key={memory.id}><div className="memory-meta"><Badge tone={memory.status === 'active' ? 'good' : 'neutral'}>{memory.status}</Badge><span>{memory.type}</span><time dateTime={memory.created_at}>{formatDate(memory.created_at)}</time></div><p>{memory.content}</p><footer><span>Source: {memory.provenance}</span><span>Confidence {Math.round(memory.confidence * 100)}%</span><code>{memory.id}</code></footer></article>) : <Empty>No memories match this filter.</Empty>}</section>{visible.length > 4 && <button className="button list-toggle" aria-expanded={expanded} onClick={() => setExpanded((value) => !value)}>{expanded ? 'Show fewer memories' : `Show ${visible.length - shown.length} more memories`}</button>}</>
+  return <><div className="page-heading"><div><p className="eyebrow">03 · REMEMBER</p><h2 id="remember-title" ref={headingRef} tabIndex={-1}>Inspect the evidence</h2><p>Review only the memories scoped to this organization and agent.</p></div><Badge>{memories.length} loaded</Badge></div><label className="search"><span aria-hidden>⌕</span><input value={query} onChange={(event) => { setQuery(event.target.value); setExpanded(false) }} placeholder="Filter memories" aria-label="Filter memories" /></label><section className="memory-list">{shown.length ? shown.map((memory) => <article className="memory-card" key={memory.id}><div className="memory-meta"><Badge tone={memory.status === 'active' ? 'good' : 'neutral'}>{memory.status}</Badge><span>{memory.type}</span><time dateTime={memory.created_at}>{formatDate(memory.created_at)}</time></div><p>{memory.content}</p><footer><span>Source: {memory.provenance}</span><span>Confidence {Math.round(memory.confidence * 100)}%</span><code>{memory.id}</code></footer></article>) : <Empty>No memories match this filter.</Empty>}</section>{visible.length > 4 && <button className="button list-toggle" aria-expanded={expanded} onClick={() => setExpanded((value) => !value)}>{expanded ? 'Show fewer memories' : `Show ${visible.length - shown.length} more memories`}</button>}</>
 }
 
 function PolicyHistory({ policies, active, proposal, audit, busy, locked, onDecision }: { policies: Policy[]; active: Policy | null; proposal: GuardrailProposal | null; audit: AuditEvent[]; busy: boolean; locked: boolean; onDecision: (proposal: GuardrailProposal, decision: 'approve' | 'reject') => void }) {
