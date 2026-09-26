@@ -81,7 +81,7 @@ Continuum is deployed as a single unified service on Vercel (web app + API) with
 
 ### Required Environment Variables
 
-Set these in the Vercel project settings before deployment:
+Add these to the Vercel project settings (as plain environment variables in the UI):
 
 - **MongoDB**: `MONGODB_URI`, `MONGODB_DATABASE`, `MONGODB_VECTOR_INDEX`
 - **Models**: `MODEL_API_KEY`, `ENDPOINT`, `OPENROUTER_API_KEY`, `OPENROUTER_CHAT_MODEL`, `MODEL_PROVIDER=openrouter`, `EMBED_PROVIDER=voyage`, `EMBED_DIMENSIONS=1024`
