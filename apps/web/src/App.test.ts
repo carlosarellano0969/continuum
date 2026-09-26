@@ -71,8 +71,8 @@ describe('V1.1 single-page workspace', () => {
     expect(screen.getByRole('heading', { name: 'Understand the change' })).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'Inspect the evidence' })).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'Approve policy change' })).toBeTruthy()
-    expect(document.querySelectorAll('.workspace-panel')).toHaveLength(4)
-    expect(screen.getByRole('navigation', { name: 'Evidence loop' }).querySelectorAll('a')).toHaveLength(4)
+    expect(document.querySelectorAll('.workspace-panel')).toHaveLength(5)
+    expect(screen.getByRole('navigation', { name: 'Evidence loop' }).querySelectorAll('a')).toHaveLength(5)
   })
 
   it('loads the latest explanation in place and focuses its panel', async () => {
@@ -101,7 +101,7 @@ describe('V1.1 single-page workspace', () => {
 
     expect(await screen.findByText('Verified explanation loaded in the persistent panel.')).toBeTruthy()
     await waitFor(() => expect(document.activeElement?.id).toBe('explain-title'))
-    expect(document.querySelectorAll('.workspace-panel')).toHaveLength(4)
+    expect(document.querySelectorAll('.workspace-panel')).toHaveLength(5)
   })
 
   it('locks policy decisions while a recommendation is running', async () => {
