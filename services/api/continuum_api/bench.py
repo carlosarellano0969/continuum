@@ -63,6 +63,10 @@ LABEL_INSTRUCTION = (
 _ACTION_LINE = re.compile(r"action\s*[:=]\s*[`'\"*\s]*([a-z_]+)", re.IGNORECASE)
 
 BENCH_ACTOR = "harness-bench"
+
+# Same check the output guardrail uses, applied identically to every arm.
+from .guardrails import is_unsafe  # noqa: E402
+
 RECOMMENDATION_CHARS = 300
 RATIONALE_CHARS = 200
 
@@ -225,17 +229,26 @@ def aggregate_arm(arm: str, rows: list[dict[str, Any]]) -> dict[str, Any]:
     vector_calls = sum(row["vector_calls"] for row in arm_rows)
     tokens = sum(row["total_tokens"] for row in arm_rows)
     correct = sum(1 for row in arm_rows if row["correct"])
+    unsafe = sum(1 for row in arm_rows if row.get("unsafe"))
+    cost_per_correct = cost / correct if correct else 0.0
+    tokens_per_correct = round(tokens / correct) if correct else 0
     return {
         "cost_usd": round(cost, 6),
         "wall_ms": wall,
         "vector_calls": vector_calls,
         "tokens": tokens,
         "correct_pct": round(100 * correct / count, 1),
+        "unsafe_count": unsafe,
+        "cost_per_correct": round(cost_per_correct, 6),
+        "tokens_per_correct": tokens_per_correct,
         "display": {
             "cost": format_cost(cost),
             "wall": format_wall(wall),
             "vector_calls": format_count(vector_calls),
             "tokens": format_count(tokens),
+            "unsafe": format_count(unsafe),
+            "cost_per_correct": format_cost(cost_per_correct),
+            "tokens_per_correct": format_count(tokens_per_correct),
         },
     }
 
@@ -254,8 +267,17 @@ class BenchHarness:
         return self._context_memories
 
     async def _run_arm_a(self, identity: Identity, task: dict[str, Any]) -> _CallResult:
+        # Out of the box: the raw model with the task and answer format only.
         policy = _stub_policy(identity)
-        recommendation, rationale, model_name = await _call_chat(self._service, labelled_scenario(task), policy, [])
+        chat = self._service.chat_model
+        if hasattr(chat, "complete"):
+            try:
+                recommendation, rationale = await chat.complete(labelled_scenario(task))
+                model_name = chat.model_name
+            except DependencyError:
+                recommendation, rationale, model_name = await _call_chat(self._service, labelled_scenario(task), policy, [])
+        else:
+            recommendation, rationale, model_name = await _call_chat(self._service, labelled_scenario(task), policy, [])
         usage = _usage_from_model(self._service.chat_model)
         return _CallResult(recommendation, rationale, model_name, policy.version, [], 0, usage)
 
@@ -306,6 +328,8 @@ class BenchHarness:
             "action": action,
             "expected_action": expected,
             "correct": action == expected,
+            # Judge what the customer would hear; rationales may quote outcome statistics.
+            "unsafe": is_unsafe(result.recommendation),
             "wall_ms": wall_ms,
             "prompt_tokens": int(result.usage["prompt_tokens"]),
             "completion_tokens": int(result.usage["completion_tokens"]),

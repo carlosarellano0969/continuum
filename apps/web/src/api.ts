@@ -109,6 +109,9 @@ export interface HarnessArmDisplay {
   wall: string
   vector_calls: string
   tokens: string
+  unsafe?: string
+  cost_per_correct?: string
+  tokens_per_correct?: string
 }
 
 // Aggregate metrics for a single arm. The API keys these by arm name in a
@@ -119,6 +122,8 @@ export interface HarnessArmAggregate {
   vector_calls: number
   tokens: number
   correct_pct: number
+  unsafe_count?: number
+  cost_per_correct?: number
   display: HarnessArmDisplay
 }
 

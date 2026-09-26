@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { HarnessArmName, HarnessRun, HarnessRunSummary } from './api'
 import { api } from './api'
-import { ARM_ORDER, LIVE_RUN_TASK_LIMIT, RECOMMENDATION_TRUNCATE_LENGTH, armLabels, formatArmMetrics, formatRowCost, resolvePolicyVersion, truncate } from './harnessFormat'
+import { ARM_ORDER, LIVE_RUN_TASK_LIMIT, RECOMMENDATION_TRUNCATE_LENGTH, armLabels, formatArmMetrics, formatArmQuality, formatRowCost, resolvePolicyVersion, truncate } from './harnessFormat'
 
 export function HarnessReport({ onFocusRemember, onFocusExplain }: {
   onFocusRemember: () => void
@@ -84,6 +84,7 @@ export function HarnessReport({ onFocusRemember, onFocusExplain }: {
           return <article className="harness-arm-card" key={arm}>
             <p className="eyebrow">{armLabels[arm]}</p>
             <p className="harness-metrics">{aggregate ? formatArmMetrics(aggregate) : 'No data for this arm.'}</p>
+            {aggregate ? <p className="harness-metrics">{formatArmQuality(aggregate)}</p> : null}
             <strong className="harness-correct">{aggregate ? `${aggregate.correct_pct}%` : '—'} <span>correct</span></strong>
           </article>
         })}
