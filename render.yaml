@@ -1,0 +1,52 @@
+services:
+  - type: web
+    name: continuum-api
+    runtime: python
+    runtimeVersion: '3.12'
+    rootDir: services/api
+    startCommand: uvicorn continuum_api.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: MONGODB_URI
+        sync: false
+      - key: MONGODB_DATABASE
+        sync: false
+      - key: MONGODB_VECTOR_INDEX
+        sync: false
+      - key: MONGODB_TIMEOUT_MS
+        sync: false
+      - key: OLLAMA_BASE_URL
+        sync: false
+      - key: OLLAMA_CHAT_MODEL
+        sync: false
+      - key: OLLAMA_EMBED_MODEL
+        sync: false
+      - key: OLLAMA_CONTEXT_WINDOW
+        sync: false
+      - key: OLLAMA_MAX_OUTPUT_TOKENS
+        sync: false
+      - key: OLLAMA_REASONING_EFFORT
+        sync: false
+      - key: OLLAMA_TIMEOUT_SECONDS
+        sync: false
+      - key: CONTINUUM_ORG_ID
+        sync: false
+      - key: CONTINUUM_AGENT_ID
+        sync: false
+      - key: CONTINUUM_DEMO_SEED
+        sync: false
+      - key: CONTINUUM_CORS_ORIGINS
+        sync: false
+      - key: MODEL_API_KEY
+        sync: false
+      - key: ENDPOINT
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: OPENROUTER_CHAT_MODEL
+        sync: false
+      - key: MODEL_PROVIDER
+        sync: false
+      - key: EMBED_PROVIDER
+        sync: false
+      - key: EMBED_DIMENSIONS
+        sync: false

@@ -1,0 +1,34 @@
+{
+  "buildCommand": "npm run build --prefix apps/web",
+  "installCommand": "npm ci --prefix apps/web && pip install -r requirements.txt",
+  "framework": "vite",
+  "functions": {
+    "api/index.py": {
+      "runtime": "python3.12"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/index.py"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ],
+  "env": {
+    "MONGODB_URI": "@mongodb_uri",
+    "MONGODB_DATABASE": "@mongodb_database",
+    "MONGODB_VECTOR_INDEX": "@mongodb_vector_index",
+    "MODEL_API_KEY": "@model_api_key",
+    "ENDPOINT": "@endpoint",
+    "OPENROUTER_API_KEY": "@openrouter_api_key",
+    "OPENROUTER_CHAT_MODEL": "@openrouter_chat_model",
+    "MODEL_PROVIDER": "@model_provider",
+    "EMBED_PROVIDER": "@embed_provider",
+    "EMBED_DIMENSIONS": "@embed_dimensions",
+    "CONTINUUM_CORS_ORIGINS": "@continuum_cors_origins",
+    "VITE_API_BASE_URL": "@vite_api_base_url"
+  }
+}

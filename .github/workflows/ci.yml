@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: |
+          cd services/api
+          python -m pip install -q -e ".[test]"
+      - name: Run tests
+        run: |
+          cd services/api
+          pytest -q
+
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install dependencies
+        run: npm ci --prefix apps/web
+      - name: Lint
+        run: npm run lint --prefix apps/web
+        continue-on-error: true
+      - name: Type check
+        run: npm run typecheck --prefix apps/web
+      - name: Test
+        run: npm test --prefix apps/web -- --run
+      - name: Build
+        run: npm run build --prefix apps/web
+
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check for secrets
+        run: |
+          if grep -rIE "mongodb\+srv://|sk-or-v1-|Bearer [A-Za-z0-9_\-]{20,}" --exclude-dir=node_modules --exclude-dir=.venv --exclude=ci.yml .; then
+            echo "Error: Potential secrets found in the repository"
+            exit 1
+          fi
