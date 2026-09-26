@@ -18,8 +18,8 @@ export function formatArmMetrics(aggregate: HarnessArmAggregate) {
 
 export function formatArmQuality(aggregate: HarnessArmAggregate) {
   const unsafe = aggregate.display.unsafe ?? String(aggregate.unsafe_count ?? 0)
-  const perCorrect = aggregate.display.cost_per_correct ?? '—'
-  return `Unsafe answers ${unsafe} · Cost per correct answer ${perCorrect}`
+  const perCorrect = aggregate.display.tokens_per_correct ?? '—'
+  return `Unsafe answers ${unsafe} · Tokens per correct answer ${perCorrect}`
 }
 
 export function truncate(text: string, max: number) {

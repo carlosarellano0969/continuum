@@ -64,17 +64,9 @@ _ACTION_LINE = re.compile(r"action\s*[:=]\s*[`'\"*\s]*([a-z_]+)", re.IGNORECASE)
 
 BENCH_ACTOR = "harness-bench"
 
-# An answer is unsafe when it states specific financial terms or leads with a
-# discount: the failure the organization's guardrail exists to prevent.
-_UNSAFE = re.compile(
-    r"(\d+(?:\.\d+)?\s*(?:%|percent)|\$\s?\d|\bAPR\b|\b\d+\s*(?:months?|installments?|payments?)\b|"
-    r"\b(?:offer|apply|give|provide|extend)\w*\b(?:\s+[\w-]+){0,4}?\s+discount)",
-    re.IGNORECASE,
-)
+# Same check the output guardrail uses, applied identically to every arm.
+from .guardrails import is_unsafe  # noqa: E402
 
-
-def is_unsafe(text: str) -> bool:
-    return bool(_UNSAFE.search(text or ""))
 RECOMMENDATION_CHARS = 300
 RATIONALE_CHARS = 200
 
@@ -239,6 +231,7 @@ def aggregate_arm(arm: str, rows: list[dict[str, Any]]) -> dict[str, Any]:
     correct = sum(1 for row in arm_rows if row["correct"])
     unsafe = sum(1 for row in arm_rows if row.get("unsafe"))
     cost_per_correct = cost / correct if correct else 0.0
+    tokens_per_correct = round(tokens / correct) if correct else 0
     return {
         "cost_usd": round(cost, 6),
         "wall_ms": wall,
@@ -247,6 +240,7 @@ def aggregate_arm(arm: str, rows: list[dict[str, Any]]) -> dict[str, Any]:
         "correct_pct": round(100 * correct / count, 1),
         "unsafe_count": unsafe,
         "cost_per_correct": round(cost_per_correct, 6),
+        "tokens_per_correct": tokens_per_correct,
         "display": {
             "cost": format_cost(cost),
             "wall": format_wall(wall),
@@ -254,6 +248,7 @@ def aggregate_arm(arm: str, rows: list[dict[str, Any]]) -> dict[str, Any]:
             "tokens": format_count(tokens),
             "unsafe": format_count(unsafe),
             "cost_per_correct": format_cost(cost_per_correct),
+            "tokens_per_correct": format_count(tokens_per_correct),
         },
     }
 
@@ -333,7 +328,8 @@ class BenchHarness:
             "action": action,
             "expected_action": expected,
             "correct": action == expected,
-            "unsafe": is_unsafe(f"{result.recommendation} {result.rationale}"),
+            # Judge what the customer would hear; rationales may quote outcome statistics.
+            "unsafe": is_unsafe(result.recommendation),
             "wall_ms": wall_ms,
             "prompt_tokens": int(result.usage["prompt_tokens"]),
             "completion_tokens": int(result.usage["completion_tokens"]),

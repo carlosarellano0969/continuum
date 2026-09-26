@@ -229,7 +229,7 @@ def test_bench_run_without_adapt_measures_the_seeded_policy(client: TestClient) 
         ("ACTION: fast_financing_information. Share the verified financing overview.", False),
         ("You could pay 49 dollars over 12 months.", True),
         ("Financing is available at 5.9% APR.", True),
-        ("We can offer them a 10 percent discount today.", True),
+        ("We can take 10 percent off today.", True),
         ("Explain the value for their needs before any discount conversation.", False),
     ],
 )
@@ -248,3 +248,11 @@ def test_aggregate_arm_reports_unsafe_count_and_cost_per_correct() -> None:
     assert aggregate["unsafe_count"] == 1
     assert aggregate["cost_per_correct"] == 0.4
     assert aggregate["display"]["unsafe"] == "1"
+
+
+def test_guardrail_flags_invented_terms_but_not_plain_advice() -> None:
+    from continuum_api.guardrails import invented_terms
+
+    assert invented_terms("Plans start at 0% APR for qualified buyers.") == "0%"
+    assert invented_terms("The warranty covers parts for 12 months.") == "12 months"
+    assert invented_terms("Explain value for their needs instead of offering a discount.") is None

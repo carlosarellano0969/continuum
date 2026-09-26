@@ -393,18 +393,17 @@ class OpenRouterChatModel:
             {"id": memory.id, "content": memory.content}
             for memory in memories
         ]
-        prompt = {
+        prompt: dict[str, Any] = {
             "scenario": scenario,
-            "customer": customer,
-            "policy": {"version": policy.version, "rule": policy.rule, "risk": policy.risk},
+            "policy": {"version": policy.version, "rule": policy.rule},
             "memories": evidence,
             "instruction": (
-                "Return only a JSON object with string keys recommendation and rationale. "
-                "Ground the answer in the supplied policy and memories. Never invent rates, payment amounts, "
-                "discounts, eligibility, approvals, or other financial terms. If verified terms are absent, "
-                "recommend the next safe step or a qualified human handoff."
+                "Return JSON with keys recommendation and rationale. Follow the policy, use the memories "
+                "as evidence, and never invent financial terms."
             ),
         }
+        if customer:
+            prompt["customer"] = customer
         return await self._request(prompt)
 
     async def complete(self, scenario: str) -> tuple[str, str]:
@@ -422,7 +421,7 @@ class OpenRouterChatModel:
             "type": "object",
             "properties": {
                 "recommendation": {"type": "string", "maxLength": 500},
-                "rationale": {"type": "string", "maxLength": 700},
+                "rationale": {"type": "string", "maxLength": 300},
             },
             "required": ["recommendation", "rationale"],
             "additionalProperties": False,

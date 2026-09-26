@@ -10,6 +10,7 @@ from uuid import NAMESPACE_URL, uuid4, uuid5
 
 from .adapters import ChatModel, DeterministicChatModel, DeterministicEmbedder, Embedder
 from .config import Settings
+from .guardrails import RETRY_NOTE, invented_terms
 from .errors import ConflictError, DependencyError, NotFoundError
 from .models import (
     Approval,
@@ -335,7 +336,7 @@ class ContinuumService:
                 "status": "fallback" if retrieval_mode == "lexical-fallback" else "ok",
                 "backend": retrieval_mode,
                 "count": len(memories),
-                "limit": 5,
+                "limit": RECALL_LIMIT,
                 "vector_calls": 1 if retrieval_mode == "atlas-vector" else 0,
             }
         )
@@ -346,7 +347,23 @@ class ContinuumService:
             recommendation, rationale = await self.chat_model.recommend(
                 request.scenario, request.customer, active, memories
             )
-            usage = getattr(self.chat_model, "last_usage", None) or zero_usage
+            usage = dict(getattr(self.chat_model, "last_usage", None) or zero_usage)
+            violation = invented_terms(recommendation)
+            if violation:
+                # Output guardrail: the policy forbids invented terms, so regenerate once.
+                recommendation, rationale = await self.chat_model.recommend(
+                    request.scenario + RETRY_NOTE, request.customer, active, memories
+                )
+                retry_usage = getattr(self.chat_model, "last_usage", None) or zero_usage
+                usage = {key: usage.get(key, 0) + retry_usage.get(key, 0) for key in zero_usage}
+                trace.append(
+                    {
+                        "tool": "guardrail",
+                        "status": "retried",
+                        "violation": violation,
+                        "resolved": invented_terms(recommendation) is None,
+                    }
+                )
             trace.append({"tool": "chat", "status": "ok", "model": model_name, "usage": usage})
         except DependencyError as exc:
             recommendation, rationale = await self.fallback_chat.recommend(
@@ -485,7 +502,8 @@ class ContinuumService:
             proposed_rule = (
                 "For financing questions, share verified financing-path information right away. "
                 "For pricing objections, explain value against the customer's stated needs instead of "
-                "leading with a discount. Never invent rates, payments, or discounts."
+                "leading with a discount. Do not tailor replies to the lead source; that evidence is insufficient. "
+                "Never invent rates, payments, or discounts."
             )
             expected_effect = (
                 "Apply the two strong synthetic cohort findings: fast financing information improved success "

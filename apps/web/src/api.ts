@@ -111,6 +111,7 @@ export interface HarnessArmDisplay {
   tokens: string
   unsafe?: string
   cost_per_correct?: string
+  tokens_per_correct?: string
 }
 
 // Aggregate metrics for a single arm. The API keys these by arm name in a
