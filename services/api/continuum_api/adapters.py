@@ -4,6 +4,7 @@ import asyncio
 import hashlib
 import json
 import math
+import time
 from typing import Annotated, Any, Protocol
 
 import httpx
@@ -13,6 +14,10 @@ from .errors import DependencyError
 from .models import Memory, Policy
 
 OPENROUTER_TOTAL_TIMEOUT_SECONDS = 45.0
+# The hosted embeddings key can be limited to 3 requests/minute; health checks
+# and repeated texts must not spend that budget.
+EMBED_HEALTH_TTL_SECONDS = 300.0
+EMBED_CACHE_MAX_ENTRIES = 512
 
 
 class _ChatResponse(BaseModel):
@@ -267,15 +272,31 @@ class VoyageEmbedder:
     async def health(self) -> str:
         if not self.configured or not self._url:
             return "unconfigured"
+        cached = getattr(self, "_health_cache", None)
+        if cached and time.monotonic() - cached[0] < EMBED_HEALTH_TTL_SECONDS:
+            return cached[1]
         try:
             vector = await self.embed("healthcheck")
-            return "ok" if len(vector) == self._dimensions else "degraded"
+            status = "ok" if len(vector) == self._dimensions else "degraded"
         except DependencyError:
-            return "degraded"
+            status = "degraded"
+        self._health_cache = (time.monotonic(), status)
+        return status
 
     async def embed(self, text: str) -> list[float]:
         if not self.configured or not self._url:
             raise DependencyError("Voyage embeddings are unconfigured")
+        cache: dict[str, list[float]] = self.__dict__.setdefault("_embed_cache", {})
+        if text in cache:
+            self.last_usage_tokens = 0
+            return list(cache[text])
+        vector = await self._embed_remote(text)
+        if len(cache) >= EMBED_CACHE_MAX_ENTRIES:
+            cache.pop(next(iter(cache)))
+        cache[text] = vector
+        return list(vector)
+
+    async def _embed_remote(self, text: str) -> list[float]:
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.post(
