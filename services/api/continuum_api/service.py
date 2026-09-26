@@ -314,21 +314,32 @@ class ContinuumService:
                 "backend": retrieval_mode,
                 "count": len(memories),
                 "limit": 5,
+                "vector_calls": 1 if retrieval_mode == "atlas-vector" else 0,
             }
         )
         trace.append({"tool": "active_policy", "status": "ok", "policy_id": active.id, "version": active.version})
+        zero_usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0, "cost_usd": 0.0}
         model_name = self.chat_model.model_name
         try:
             recommendation, rationale = await self.chat_model.recommend(
                 request.scenario, request.customer, active, memories
             )
-            trace.append({"tool": "chat", "status": "ok", "model": model_name})
+            usage = getattr(self.chat_model, "last_usage", None) or zero_usage
+            trace.append({"tool": "chat", "status": "ok", "model": model_name, "usage": usage})
         except DependencyError as exc:
             recommendation, rationale = await self.fallback_chat.recommend(
                 request.scenario, request.customer, active, memories
             )
             model_name = self.fallback_chat.model_name
-            trace.append({"tool": "chat", "status": "fallback", "reason": str(exc), "model": model_name})
+            trace.append(
+                {
+                    "tool": "chat",
+                    "status": "fallback",
+                    "reason": str(exc),
+                    "model": model_name,
+                    "usage": zero_usage,
+                }
+            )
         latency_ms = max(0, round((time.perf_counter() - started) * 1000))
         decision = Decision(
             id=self._id("dec"),
