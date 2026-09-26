@@ -11,10 +11,11 @@ The hackathon rules require that judges can clearly identify the work created du
 
 | Item | Where | Status |
 |---|---|---|
-| Atlas-native persistence, `$vectorSearch` with tenant filters, restart persistence, approval transaction, verified on the Atlas Sandbox | `services/api/continuum_api/repository.py`, `docs/ATLAS_SETUP.md` | planned |
-| Hosted model path: OpenRouter chat adapter, `voyage-4-large` embeddings via `ai.mongodb.com` (1024 dims) | `services/api/continuum_api/adapters.py` | planned |
-| **Harness Bench**: same task set through out-of-the-box / context-stuffing / Continuum arms; cost, wall, vector calls, tokens, correctness per arm; stored in `bench_runs` | `services/api/continuum_api/bench.py`, `/api/bench/*` | planned |
-| Harness report panel | `apps/web/src/` | planned |
-| Deployed URL (Vercel), CI | `vercel.json`, `.github/workflows/` | planned |
+| Atlas-native persistence, `$vectorSearch` with tenant filters, restart persistence, approval transaction, verified on the Atlas Sandbox | `services/api/continuum_api/repository.py`, `docs/ATLAS_SETUP.md` | merged (PR #2, L1) |
+| Hosted model path: OpenRouter chat adapter, `voyage-4-large` embeddings via `ai.mongodb.com` (1024 dims) | `services/api/continuum_api/adapters.py` | merged (PR #2, L1) |
+| **Harness Bench**: same task set through out-of-the-box / context-stuffing / Continuum arms; cost, wall, vector calls, tokens, correctness per arm; stored in `bench_runs` | `services/api/continuum_api/bench.py`, `/api/bench/*` | merged (PR #3, L2) |
+| Harness report panel | `apps/web/src/` | in progress (W1) |
+| Deployed URL (Vercel), CI | `vercel.json`, `.github/workflows/` | merged (PR #1, L3) |
+| Acceptance/QA | tests/ | in progress (Q1) |
 
-Update the Status column as PRs merge. All data is synthetic and labeled `synthetic: true`.
+All data is synthetic and labeled `synthetic: true`. See docs/SUBMISSION.md for the deployed URL.
