@@ -16,9 +16,11 @@ from .adapters import (
     OpenRouterChatModel,
     VoyageEmbedder,
 )
+from .bench import BenchHarness
 from .config import Settings
 from .errors import ConflictError, ContinuumError, DependencyError, NotFoundError
 from .models import (
+    BenchRunRequest,
     DemoResetRequest,
     Identity,
     MemoryCreate,
@@ -86,9 +88,11 @@ def create_app(
     chat_model = chat_model or _build_chat_model(settings, ollama)
     embedder = embedder or _build_embedder(settings, ollama)
     service = ContinuumService(settings, repository, chat_model, embedder)
+    bench_harness = BenchHarness(service)
 
     app = FastAPI(title="Continuum V1 API", version="0.1.0")
     app.state.continuum_service = service
+    app.state.bench_harness = bench_harness
     app.add_middleware(
         CORSMiddleware,
         allow_origins=list(settings.cors_origins),
@@ -133,6 +137,9 @@ def create_app(
     def get_service(request: Request) -> ContinuumService:
         return request.app.state.continuum_service
 
+    def get_bench(request: Request) -> BenchHarness:
+        return request.app.state.bench_harness
+
     def get_identity(
         organization_id: Annotated[str | None, Header(alias="X-Organization-ID")] = None,
         agent_id: Annotated[str | None, Header(alias="X-Agent-ID")] = None,
@@ -144,6 +151,7 @@ def create_app(
         return Identity(organization_id=organization_id, agent_id=agent_id)
 
     Service = Annotated[ContinuumService, Depends(get_service)]
+    Bench = Annotated[BenchHarness, Depends(get_bench)]
     Scope = Annotated[Identity, Depends(get_identity)]
 
     @app.get("/api/health")
@@ -230,6 +238,22 @@ def create_app(
                 identity, decision_id=decision_id, event_type=event_type, limit=limit
             )
         }
+
+    @app.post("/api/bench/run")
+    async def run_bench(
+        identity: Scope,
+        bench: Bench,
+        body: BenchRunRequest = Body(default_factory=BenchRunRequest),
+    ) -> dict:
+        return await bench.run(identity, body.arms, body.repeats)
+
+    @app.get("/api/bench/runs")
+    def list_bench_runs(identity: Scope, bench: Bench) -> dict:
+        return {"items": bench.list_runs(identity)}
+
+    @app.get("/api/bench/runs/{run_id}")
+    def get_bench_run(run_id: str, identity: Scope, bench: Bench) -> dict:
+        return bench.get_run(identity, run_id)
 
     return app
 

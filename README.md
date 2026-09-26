@@ -67,6 +67,16 @@ Open `http://127.0.0.1:5173`. Before presenting, follow the model warm-up, reset
 
 Never commit `.env`, paste credentials into documentation, or claim Atlas verification from the in-memory fallback.
 
+## Harness Bench
+
+Compares the same task, same model, temperature 0, across three arms so judges can see what the memory layer buys:
+
+- **`out_of_box`** — role + task only. No memory, no policy, no tools.
+- **`context_stuffing`** — arm A plus the full `data/demo/interactions.jsonl` log serialized in file order, truncated to fit a ~4K-token budget (no retrieval, so relevance is luck of the file order).
+- **`continuum`** — the real `ContinuumService.recommend` path: top-5 filtered recall plus the active policy, citing memory IDs and policy version.
+
+`POST /api/bench/run` (`{arms?, repeats?}`) seeds the deterministic demo fixtures, runs 12 synthetic tasks per arm, and stores one document per run in `bench_runs` (Atlas when configured, else in-memory). `GET /api/bench/runs` lists the last 20 run summaries; `GET /api/bench/runs/{id}` returns the full row-level document. Every record is `synthetic: true`, and two runs with the same seed produce identical `correct` results per arm.
+
 ## Documentation
 
 - `AGENTS.md` — contributor boundaries and verification rules
