@@ -35,7 +35,15 @@ CHARS_PER_TOKEN = 4  # rough approximation; no tokenizer dependency needed.
 ARM_OUT_OF_BOX = "out_of_box"
 ARM_CONTEXT_STUFFING = "context_stuffing"
 ARM_CONTINUUM = "continuum"
-ALL_ARMS = (ARM_OUT_OF_BOX, ARM_CONTEXT_STUFFING, ARM_CONTINUUM)
+# The same raw prompt as out_of_box, sent to a bigger model (OPENROUTER_LARGE_MODEL).
+ARM_OUT_OF_BOX_LARGE = "out_of_box_large"
+ALL_ARMS = (ARM_OUT_OF_BOX, ARM_CONTEXT_STUFFING, ARM_CONTINUUM, ARM_OUT_OF_BOX_LARGE)
+DEFAULT_ARMS = ALL_ARMS
+
+# core: the 12 tasks built with the demo fixture. holdout: tasks written separately,
+# with paraphrases and traps, that never appear in the seeded memories.
+TASK_FILES = {"core": "tasks.json", "holdout": "tasks_holdout.json"}
+SCENARIO_CHARS = 160
 
 NO_ACTION = "none_detected"
 
@@ -93,9 +101,13 @@ def labelled_scenario(task: dict[str, Any]) -> str:
     return f"{task['scenario']}{LABEL_INSTRUCTION}"
 
 
-def load_tasks() -> list[dict[str, Any]]:
-    raw = (BENCH_DATA_DIR / "tasks.json").read_text(encoding="utf-8")
-    return json.loads(raw)
+def load_tasks(task_set: str = "core") -> list[dict[str, Any]]:
+    if task_set not in TASK_FILES:
+        raise ConflictError(f"unknown task set: {task_set}")
+    path = BENCH_DATA_DIR / TASK_FILES[task_set]
+    if not path.exists():
+        raise NotFoundError(f"task set not available: {task_set}")
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
 def format_cost(value: float) -> str:
@@ -256,8 +268,9 @@ def aggregate_arm(arm: str, rows: list[dict[str, Any]]) -> dict[str, Any]:
 class BenchHarness:
     """Runs the harness bench and stores/reads run documents."""
 
-    def __init__(self, service: ContinuumService) -> None:
+    def __init__(self, service: ContinuumService, large_chat: Any | None = None) -> None:
         self._service = service
+        self._large_chat = large_chat
         self._memory_runs: list[dict[str, Any]] = []
         self._context_memories: list[Memory] | None = None
 
@@ -280,6 +293,24 @@ class BenchHarness:
             recommendation, rationale, model_name = await _call_chat(self._service, labelled_scenario(task), policy, [])
         usage = _usage_from_model(self._service.chat_model)
         return _CallResult(recommendation, rationale, model_name, policy.version, [], 0, usage)
+
+    async def _run_arm_large(self, identity: Identity, task: dict[str, Any]) -> _CallResult:
+        # Out of the box on a bigger model: same raw prompt, no memory, no policy, no guardrail.
+        policy = _stub_policy(identity)
+        chat = self._large_chat
+        if chat is not None and hasattr(chat, "complete"):
+            try:
+                recommendation, rationale = await chat.complete(labelled_scenario(task))
+                return _CallResult(
+                    recommendation, rationale, chat.model_name, policy.version, [], 0, _usage_from_model(chat)
+                )
+            except DependencyError:
+                pass
+        recommendation, rationale = await self._service.fallback_chat.recommend(
+            labelled_scenario(task), None, policy, []
+        )
+        model_name = f"{self._service.fallback_chat.model_name} (large model unavailable)"
+        return _CallResult(recommendation, rationale, model_name, policy.version, [], 0, _normalize_usage(None))
 
     async def _run_arm_b(self, identity: Identity, task: dict[str, Any]) -> _CallResult:
         policy = _stub_policy(identity)
@@ -314,6 +345,8 @@ class BenchHarness:
         started = time.perf_counter()
         if arm == ARM_OUT_OF_BOX:
             result = await self._run_arm_a(identity, task)
+        elif arm == ARM_OUT_OF_BOX_LARGE:
+            result = await self._run_arm_large(identity, task)
         elif arm == ARM_CONTEXT_STUFFING:
             result = await self._run_arm_b(identity, task)
         else:
@@ -324,6 +357,9 @@ class BenchHarness:
         return {
             "arm": arm,
             "task_id": task["task_id"],
+            "group": task.get("group"),
+            "trap": task.get("trap"),
+            "scenario": (task.get("scenario") or "")[:SCENARIO_CHARS],
             "model": result.model_name,
             "action": action,
             "expected_action": expected,
@@ -352,8 +388,9 @@ class BenchHarness:
         repeats: int,
         task_limit: int | None = None,
         adapt: bool = True,
+        task_set: str = "core",
     ) -> dict[str, Any]:
-        arms = list(arms) if arms else list(ALL_ARMS)
+        arms = list(arms) if arms else list(DEFAULT_ARMS)
         for arm in arms:
             if arm not in ALL_ARMS:
                 raise ConflictError(f"unknown bench arm: {arm}")
@@ -363,7 +400,7 @@ class BenchHarness:
         # outcomes are analyzed and the resulting proposal is approved before
         # any arm runs. Arms A and B never see policy or memory either way.
         active_policy_version = self._adapt(identity) if adapt else self._active_version(identity)
-        tasks = load_tasks()
+        tasks = load_tasks(task_set)
         if task_limit is not None:
             # Fixed task order is preserved (load_tasks returns the fixture in
             # file order), so a limited run stays reproducible across calls.
@@ -386,6 +423,10 @@ class BenchHarness:
             "synthetic": True,
             "arms": arms,
             "task_count": len(tasks),
+            "task_set": task_set,
+            "models": {
+                arm: next((row["model"] for row in rows if row["arm"] == arm), None) for arm in arms
+            },
             "adapted": adapt,
             "active_policy_version": active_policy_version,
             "rows": rows,

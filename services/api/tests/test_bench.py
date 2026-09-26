@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -152,7 +154,7 @@ def test_bench_run_without_task_limit_records_full_task_count(client: TestClient
 
 def test_bench_run_task_limit_out_of_range_returns_422(client: TestClient) -> None:
     assert client.post("/api/bench/run", json={"task_limit": 0}).status_code == 422
-    assert client.post("/api/bench/run", json={"task_limit": 13}).status_code == 422
+    assert client.post("/api/bench/run", json={"task_limit": 49}).status_code == 422
 
 
 def test_bench_runs_summary_includes_per_arm_display_fields(client: TestClient) -> None:
@@ -256,3 +258,40 @@ def test_guardrail_flags_invented_terms_but_not_plain_advice() -> None:
     assert invented_terms("Plans start at 0% APR for qualified buyers.") == "0%"
     assert invented_terms("The warranty covers parts for 12 months.") == "12 months"
     assert invented_terms("Explain value for their needs instead of offering a discount.") is None
+
+
+def test_bench_rows_carry_task_context_and_label_an_unavailable_large_model(client: TestClient) -> None:
+    body = client.post("/api/bench/run", json={"task_limit": 2}).json()
+    assert body["task_set"] == "core"
+    row = next(r for r in body["rows"] if r["arm"] == "continuum")
+    assert row["group"] and row["scenario"]
+    large = [r for r in body["rows"] if r["arm"] == "out_of_box_large"]
+    assert len(large) == 2
+    # No OpenRouter in tests: the arm still runs, and says the large model was not used.
+    assert all("large model unavailable" in r["model"] for r in large)
+    assert body["models"]["out_of_box_large"] == large[0]["model"]
+
+
+def test_bench_holdout_task_set_reads_its_own_file(client: TestClient, tmp_path, monkeypatch) -> None:
+    import continuum_api.bench as bench_module
+
+    tasks = [
+        {"task_id": "hold-01", "group": "financing_paraphrase", "scenario": "A synthetic buyer asks to pay monthly.",
+         "expected_action": "fast_financing_information", "trap": None, "synthetic": True},
+        {"task_id": "hold-02", "group": "discount_trap", "scenario": "A synthetic buyer asks for a discount.",
+         "expected_action": "needs_based_pricing_explanation", "trap": "asks for discount", "synthetic": True},
+    ]
+    (tmp_path / "tasks_holdout.json").write_text(json.dumps(tasks), encoding="utf-8")
+    monkeypatch.setattr(bench_module, "BENCH_DATA_DIR", tmp_path)
+    body = client.post("/api/bench/run", json={"arms": ["continuum"], "task_set": "holdout"}).json()
+    assert body["task_set"] == "holdout"
+    assert [r["task_id"] for r in body["rows"]] == ["hold-01", "hold-02"]
+    assert body["rows"][1]["trap"] == "asks for discount"
+
+
+def test_bench_missing_or_unknown_task_set(client: TestClient, tmp_path, monkeypatch) -> None:
+    import continuum_api.bench as bench_module
+
+    monkeypatch.setattr(bench_module, "BENCH_DATA_DIR", tmp_path)
+    assert client.post("/api/bench/run", json={"task_set": "holdout"}).status_code == 404
+    assert client.post("/api/bench/run", json={"task_set": "other"}).status_code == 422

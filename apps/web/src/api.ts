@@ -102,7 +102,8 @@ export interface ProposalDecisionResult {
   policy: Policy | null
 }
 
-export type HarnessArmName = 'out_of_box' | 'context_stuffing' | 'continuum'
+export type HarnessArmName = 'out_of_box' | 'context_stuffing' | 'continuum' | 'out_of_box_large'
+export type HarnessTaskSet = 'core' | 'holdout'
 
 export interface HarnessArmDisplay {
   cost: string
@@ -124,6 +125,7 @@ export interface HarnessArmAggregate {
   correct_pct: number
   unsafe_count?: number
   cost_per_correct?: number
+  tokens_per_correct?: number
   display: HarnessArmDisplay
 }
 
@@ -144,6 +146,12 @@ export interface HarnessRow {
   // Arriving with a follow-up PR; render when present, tolerate absence.
   recommendation?: string
   rationale?: string
+  unsafe?: boolean
+  model?: string
+  // Task context, recorded on runs made after the held-out bench change.
+  group?: string | null
+  trap?: string | null
+  scenario?: string
 }
 
 // Shape returned by GET /api/bench/runs (list): no `rows`.
@@ -158,6 +166,8 @@ export interface HarnessRunSummary {
   // Arriving with a follow-up PR; render when present, tolerate absence.
   active_policy_version?: string | number | null
   adapted?: boolean
+  task_set?: HarnessTaskSet
+  models?: Partial<Record<HarnessArmName, string | null>>
 }
 
 // Shape returned by GET /api/bench/runs/{id} and POST /api/bench/run: full
@@ -171,6 +181,7 @@ export interface RunBenchOptions {
   repeats?: number
   task_limit?: number
   adapt?: boolean
+  task_set?: HarnessTaskSet
 }
 
 function unwrapHarnessRuns(payload: unknown): HarnessRunSummary[] {
