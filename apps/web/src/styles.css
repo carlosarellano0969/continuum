@@ -270,21 +270,88 @@ html { scroll-behavior: smooth; }
   .split-panel > div + div { border-left: 0; border-top: 1px solid #dce2da; }
 }
 
-/* Desktop: fit the whole dashboard in one screen; panels scroll inside themselves. */
+/* Decide: compact recommendation, example questions. */
+.example-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.chip { padding: 4px 10px; border: 1px solid #cfdcd5; border-radius: 99px; background: #f4f8f5; color: #1d4d45; font: 500 12px/1.4 inherit; cursor: pointer; }
+.chip:hover:not(:disabled) { border-color: #176e63; background: #e3f0eb; }
+.chip:disabled { opacity: .55; cursor: default; }
+.recommendation-text { margin: 6px 0 0; color: #163b35; font: 500 17px/1.45 Newsreader, Georgia, serif; }
+.evidence-details { margin: 10px 0; border-top: 1px solid #dce2da; padding-top: 8px; }
+.evidence-details > summary { cursor: pointer; color: #176e63; font-size: 13px; font-weight: 600; }
+.evidence-details[open] > summary { margin-bottom: 8px; }
+
+/* Harness report: scoreboard, charts, family breakdown, task matrix. */
+.harness-controls { display: flex; align-items: end; gap: 10px; flex-wrap: wrap; }
+.harness-controls label, .harness-run-meta label { display: flex; flex-direction: column; gap: 3px; font-size: 11px; color: #526a62; }
+.harness-controls select, .harness-run-meta select { padding: 6px 8px; border: 1px solid #cfdcd5; border-radius: 6px; background: #fff; font: inherit; font-size: 12px; color: #163b35; }
+.harness-run-meta { font-size: 11px; }
+.harness-set { padding: 2px 9px; border-radius: 99px; background: #e3f0eb; color: #176e63; font-weight: 600; }
+.harness-callouts { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; margin: 0 0 12px; }
+.harness-callouts p { margin: 0; padding: 10px 14px; border-radius: 8px; background: #eef5f1; display: flex; flex-direction: column; gap: 2px; }
+.harness-callouts span { font-size: 12px; color: #526a62; }
+.harness-callouts strong { font: 600 26px/1.1 Newsreader, Georgia, serif; color: #176e63; font-variant-numeric: tabular-nums; }
+.harness-callouts strong.negative { color: #993d30; }
+.harness-callouts small { font-size: 11.5px; color: #526a62; }
+.harness-cards { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+.harness-arm-card { padding: 14px; }
+.harness-arm-card .eyebrow { font-size: 10px; }
+.harness-arm-card.is-continuum { border-color: #176e63; border-top-width: 4px; background: #f3faf6; }
+.harness-arm-model { margin: 4px 0 8px; color: #526a62; font-size: 11.5px; line-height: 1.35; }
+.harness-correct { display: block; font-size: 34px; line-height: 1.05; }
+.harness-correct span { font: 500 12px/1 inherit; color: #526a62; }
+.harness-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; margin: 10px 0 0; }
+.harness-stats div { min-width: 0; }
+.harness-stats dt { font-size: 10.5px; color: #526a62; }
+.harness-stats dd { margin: 1px 0 0; font-size: 14px; font-weight: 600; color: #163b35; font-variant-numeric: tabular-nums; }
+.harness-arm-card .harness-metrics { display: none; }
+.harness-charts { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.2fr); gap: 16px; margin: 14px 0 6px; align-items: start; }
+.harness-charts figure { margin: 0; }
+.harness-charts figcaption, .harness-families .eyebrow { margin: 0 0 6px; font-size: 12px; font-weight: 600; color: #163b35; }
+.harness-charts svg { display: block; width: 100%; height: auto; }
+.harness-charts .bar-label, .harness-charts .bar-value { font: 11px 'DM Mono', monospace; fill: #526a62; }
+.harness-charts .bar-value { fill: #163b35; font-weight: 600; }
+.harness-charts .bar-other rect { fill: #b9c9c1; }
+.harness-charts .bar-continuum rect { fill: #176e63; }
+.harness-families table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.harness-families th, .harness-families td { padding: 5px 6px; border-bottom: 1px solid #e3e9e4; text-align: left; font-variant-numeric: tabular-nums; }
+.harness-families th { font-size: 10.5px; color: #526a62; font-weight: 600; }
+.harness-families td.full { color: #176e63; font-weight: 600; }
+.harness-families td.none { color: #993d30; }
+.harness-table-heading span { font-size: 12px; }
+.harness-table.harness-matrix { min-width: 0; table-layout: auto; }
+.harness-matrix td, .harness-matrix th { font-size: 12.5px; vertical-align: top; }
+.harness-matrix .mark { text-align: center; white-space: nowrap; width: 1%; }
+.harness-matrix td.mark span { font-size: 16px; font-weight: 700; }
+.harness-matrix td.ok { color: #176e63; }
+.harness-matrix td.miss { color: #b3261e; background: #fbefec; }
+.harness-matrix .task-id { font: 11px 'DM Mono', monospace; color: #526a62; }
+.harness-matrix code { font-size: 11px; }
+.harness-matrix .trap, .harness-matrix .unsafe { display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: 99px; background: #f8ebe2; color: #9b4319; font-size: 10px; font-weight: 600; }
+.harness-matrix .unsafe { display: block; margin: 3px auto 0; width: max-content; }
+.harness-raw { margin-top: 12px; }
+.harness-raw > summary { cursor: pointer; color: #176e63; font-size: 13px; font-weight: 600; }
+
+@media (max-width: 1180px) {
+  .harness-charts { grid-template-columns: 1fr; }
+}
+
+/* Desktop: the loop across the top, the benchmark full width below, governance last. */
 @media (min-width: 1181px) {
-  .workspace { padding-top: 12px; padding-bottom: 12px; }
+  .workspace { padding-top: 12px; padding-bottom: 20px; }
   .overview { align-items: center; margin-bottom: 10px; padding-bottom: 10px; }
   .overview h1 { font-size: 24px; margin: 2px 0 0; }
   .overview-copy > p:last-child { display: none; }
   .proof-strip > div { padding: 6px 10px; }
   .proof-strip strong { font-size: 17px; }
   .welcome-grid { display: none; }
-  .control-grid { gap: 10px; }
-  .control-grid { align-items: start; }
+  .control-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-areas: "decide explain remember" "harness harness harness" "govern govern govern"; gap: 12px; align-items: start; }
   .workspace-panel { padding: 14px 16px; }
   .page-heading { margin-bottom: 10px; }
   .page-heading h2 { font-size: 22px; }
-  .memory-list { max-height: 300px; }
-  .timeline, .audit-list { max-height: 220px; }
-  .harness-table-wrap { max-height: 260px; }
+  .memory-list { max-height: 360px; }
+  .timeline, .audit-list { max-height: 260px; }
+  .panel-harness { padding: 20px 24px; }
+  .panel-harness .page-heading h2 { font-size: 28px; }
+  .panel-harness .harness-table-wrap { max-height: 520px; }
+  .harness-run-meta { font-size: 11px; }
 }
