@@ -232,6 +232,198 @@ class OllamaAdapter:
             raise DependencyError(f"Ollama chat request failed: {exc.__class__.__name__}") from exc
 
 
+class VoyageEmbedder:
+    """Hosted embeddings via MongoDB's ai.mongodb.com endpoint (Voyage models)."""
+
+    def __init__(
+        self,
+        endpoint: str | None,
+        api_key: str | None,
+        model: str = "voyage-4-large",
+        dimensions: int = 1_024,
+        timeout_seconds: float = 30.0,
+    ) -> None:
+        self.model_name = model
+        self.configured = bool(endpoint and api_key)
+        self._api_key = api_key
+        self._dimensions = dimensions
+        self._url = self._build_url(endpoint)
+        self.timeout = httpx.Timeout(timeout_seconds, connect=min(timeout_seconds, 5.0))
+        self.last_usage_tokens = 0
+
+    @staticmethod
+    def _build_url(endpoint: str | None) -> str | None:
+        host = (endpoint or "").strip()
+        if not host:
+            return None
+        if not host.startswith(("http://", "https://")):
+            host = f"https://{host}"
+        host = host.rstrip("/")
+        return host if host.endswith("/embeddings") else f"{host}/v1/embeddings"
+
+    async def health(self) -> str:
+        if not self.configured or not self._url:
+            return "unconfigured"
+        try:
+            vector = await self.embed("healthcheck")
+            return "ok" if len(vector) == self._dimensions else "degraded"
+        except DependencyError:
+            return "degraded"
+
+    async def embed(self, text: str) -> list[float]:
+        if not self.configured or not self._url:
+            raise DependencyError("Voyage embeddings are unconfigured")
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                response = await client.post(
+                    self._url,
+                    headers={"Authorization": f"Bearer {self._api_key}"},
+                    json={"input": [text], "model": self.model_name},
+                )
+                response.raise_for_status()
+                payload = response.json()
+            if not isinstance(payload, dict):
+                raise TypeError("embedding response must be an object")
+            data = payload.get("data")
+            if not isinstance(data, list) or not data or not isinstance(data[0], dict):
+                raise ValueError("missing embedding data")
+            vector = data[0].get("embedding")
+            if not isinstance(vector, list) or not vector:
+                raise ValueError("missing embedding vector")
+            if any(
+                isinstance(value, bool)
+                or not isinstance(value, (int, float))
+                or not math.isfinite(value)
+                for value in vector
+            ):
+                raise ValueError("embedding values must be finite numbers")
+            if len(vector) != self._dimensions:
+                raise ValueError(
+                    f"embedding dimension mismatch: expected {self._dimensions}, got {len(vector)}"
+                )
+            usage = payload.get("usage") or {}
+            self.last_usage_tokens = int(usage.get("total_tokens", 0) or 0)
+            return [float(value) for value in vector]
+        except (httpx.HTTPError, ValueError, TypeError, KeyError, OverflowError) as exc:
+            raise DependencyError(f"Voyage embedding request failed: {exc.__class__.__name__}") from exc
+
+
+class OpenRouterChatModel:
+    """OpenAI-compatible chat via OpenRouter, with an in-provider model fallback."""
+
+    _URL = "https://openrouter.ai/api/v1/chat/completions"
+
+    def __init__(
+        self,
+        api_key: str | None,
+        model: str = "openai/gpt-oss-20b",
+        fallback_model: str = "anthropic/claude-haiku-4.5",
+        max_output_tokens: int = 512,
+        reasoning_effort: str = "low",
+        timeout_seconds: float = 30.0,
+    ) -> None:
+        self.model_name = model
+        self.configured = bool(api_key)
+        self._api_key = api_key
+        self._fallback_model = fallback_model
+        self._max_output_tokens = max_output_tokens
+        self._reasoning_effort = reasoning_effort
+        self.timeout = httpx.Timeout(timeout_seconds, connect=min(timeout_seconds, 5.0))
+        self.last_usage: dict[str, Any] = {
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "total_tokens": 0,
+            "cost_usd": 0.0,
+        }
+
+    async def health(self) -> str:
+        return "ok" if self.configured else "unconfigured"
+
+    async def recommend(
+        self,
+        scenario: str,
+        customer: dict[str, Any] | None,
+        policy: Policy,
+        memories: list[Memory],
+    ) -> tuple[str, str]:
+        if not self.configured:
+            raise DependencyError("OpenRouter is unconfigured")
+        evidence = [
+            {"id": memory.id, "content": memory.content, "confidence": memory.confidence}
+            for memory in memories
+        ]
+        prompt = {
+            "scenario": scenario,
+            "customer": customer,
+            "policy": {"version": policy.version, "rule": policy.rule, "risk": policy.risk},
+            "memories": evidence,
+            "instruction": (
+                "Return only a JSON object with string keys recommendation and rationale. "
+                "Ground the answer in the supplied policy and memories. Never invent rates, payment amounts, "
+                "discounts, eligibility, approvals, or other financial terms. If verified terms are absent, "
+                "recommend the next safe step or a qualified human handoff."
+            ),
+        }
+        response_schema = {
+            "type": "object",
+            "properties": {
+                "recommendation": {"type": "string", "maxLength": 500},
+                "rationale": {"type": "string", "maxLength": 700},
+            },
+            "required": ["recommendation", "rationale"],
+            "additionalProperties": False,
+        }
+        last_error: Exception | None = None
+        for model_name in (self.model_name, self._fallback_model):
+            try:
+                async with httpx.AsyncClient(timeout=self.timeout) as client:
+                    response = await client.post(
+                        self._URL,
+                        headers={
+                            "Authorization": f"Bearer {self._api_key}",
+                            "Content-Type": "application/json",
+                        },
+                        json={
+                            "model": model_name,
+                            "temperature": 0,
+                            "max_tokens": self._max_output_tokens,
+                            "reasoning": {"effort": self._reasoning_effort},
+                            "messages": [
+                                {"role": "user", "content": json.dumps(prompt, sort_keys=True)}
+                            ],
+                            "response_format": {
+                                "type": "json_schema",
+                                "json_schema": {
+                                    "name": "recommendation",
+                                    "strict": True,
+                                    "schema": response_schema,
+                                },
+                            },
+                            "usage": {"include": True},
+                        },
+                    )
+                    response.raise_for_status()
+                    body = response.json()
+                content = body["choices"][0]["message"]["content"]
+                if not isinstance(content, str):
+                    raise TypeError("chat content must be a JSON string")
+                result = _ChatResponse.model_validate_json(content)
+                usage = body.get("usage") or {}
+                self.last_usage = {
+                    "prompt_tokens": int(usage.get("prompt_tokens", 0) or 0),
+                    "completion_tokens": int(usage.get("completion_tokens", 0) or 0),
+                    "total_tokens": int(usage.get("total_tokens", 0) or 0),
+                    "cost_usd": float(usage.get("cost", 0.0) or 0.0),
+                }
+                return result.recommendation, result.rationale
+            except (httpx.HTTPError, ValueError, TypeError, KeyError, ValidationError) as exc:
+                last_error = exc
+                continue
+        raise DependencyError(
+            f"OpenRouter chat request failed: {last_error.__class__.__name__}"
+        ) from last_error
+
+
 class OllamaEmbedder:
     def __init__(self, adapter: OllamaAdapter) -> None:
         self._adapter = adapter

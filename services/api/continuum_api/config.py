@@ -37,6 +37,15 @@ class Settings:
     agent_id: str = "demo-agent"
     demo_seed: int = 20_260_924
     cors_origins: tuple[str, ...] = DEFAULT_CORS_ORIGINS
+    model_provider: str = "ollama"
+    embed_provider: str = "ollama"
+    embed_dimensions: int = 1024
+    endpoint: str | None = None
+    model_api_key: str | None = None
+    voyage_embed_model: str = "voyage-4-large"
+    openrouter_api_key: str | None = None
+    openrouter_chat_model: str = "openai/gpt-oss-20b"
+    openrouter_chat_model_fallback: str = "anthropic/claude-haiku-4.5"
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -61,4 +70,15 @@ class Settings:
             agent_id=os.getenv("CONTINUUM_AGENT_ID", "demo-agent"),
             demo_seed=_integer("CONTINUUM_DEMO_SEED", 20_260_924),
             cors_origins=origins,
+            model_provider=os.getenv("MODEL_PROVIDER", "ollama"),
+            embed_provider=os.getenv("EMBED_PROVIDER", "ollama"),
+            embed_dimensions=_integer("EMBED_DIMENSIONS", 1_024),
+            endpoint=os.getenv("ENDPOINT") or None,
+            model_api_key=os.getenv("MODEL_API_KEY") or None,
+            voyage_embed_model=os.getenv("VOYAGE_EMBED_MODEL", "voyage-4-large"),
+            openrouter_api_key=os.getenv("OPENROUTER_API_KEY") or None,
+            openrouter_chat_model=os.getenv("OPENROUTER_CHAT_MODEL", "openai/gpt-oss-20b"),
+            openrouter_chat_model_fallback=os.getenv(
+                "OPENROUTER_CHAT_MODEL_FALLBACK", "anthropic/claude-haiku-4.5"
+            ),
         )
