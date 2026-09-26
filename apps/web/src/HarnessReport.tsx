@@ -121,7 +121,7 @@ export function HarnessReport({ onFocusRemember, onFocusExplain }: {
         {comparisons.map((item) => <p key={item.label}>
           <span>Continuum vs {item.label.toLowerCase()}</span>
           <strong className={item.points < 0 ? 'negative' : undefined}>{formatPoints(item.points)}</strong>
-          <small>accuracy · {item.tokenRatio == null ? 'tokens per correct answer n/a' : `${formatRatio(item.tokenRatio)} tokens per correct answer`}</small>
+          <small>accuracy · {item.tokenRatio == null ? 'tokens per correct answer n/a' : `Continuum uses ${formatRatio(item.tokenRatio)} tokens per correct answer`}</small>
         </p>)}
       </div>}
 
