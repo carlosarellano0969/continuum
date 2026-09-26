@@ -1,29 +1,27 @@
-# Continuum V1
+# Continuum V4
 
-Continuum is an inspectable memory and policy layer for long-running agents. V1.1 presents the complete Decide → Explain → Remember → Govern evidence loop on one responsive page. The web application, API, generative model, and embeddings run locally and can persist evidence and vector-searchable memories in MongoDB Atlas when Atlas is configured.
-
-The signature experience answers: **Why did you change your mind?** It ties the answer to immutable policy versions, retrieved memories, measured outcomes, and the human approval that authorized the change.
+Continuum is an inspectable memory and policy layer for long-running agents. The **Decide → Explain → Remember → Govern** evidence loop answers the signature question: **Why did you change your mind?** tied to immutable policy versions, retrieved memories, measured outcomes, and human approval. Deployed on MongoDB Atlas with hosted embeddings and chat, Continuum's **Harness Bench** compares three inference arms to measure the value of the memory layer.
 
 ## Status
 
-The Windows local path is implemented and verified with:
+**Live on Vercel:** <DEPLOYED_URL>
 
-- React/Vite in the browser;
-- FastAPI and Pydantic locally;
-- `gpt-oss:20b` and `nomic-embed-text:latest` through Ollama; and
-- deterministic process-local persistence when Atlas is not configured.
+- **Web:** React/TypeScript/Vite
+- **API:** FastAPI, Pydantic, PyMongo
+- **Chat:** OpenRouter `gpt-oss-20b`, temperature 0, 4K context
+- **Embeddings:** MongoDB-hosted Voyage `voyage-4-large`, 1024 dimensions
+- **Data:** MongoDB Atlas Sandbox with Vector Search and `$vectorSearch` filters, synthetic labeled interactions
+- **Harness Bench:** Compares out-of-box, context-stuffing, and continuum arms on the same 12 synthetic tasks
 
-The application currently bounds Ollama chat to a 4,096-token context, 512 output tokens, and low reasoning effort. This is the rehearsed V1 demo setting, not the model's maximum context.
+| Component | Built before | Built today |
+|---|---|---|
+| V1.1 app, local Ollama, in-memory repo, 47 API + 23 acceptance tests | ✓ | |
+| Atlas persistence, Vector Search with tenant/type filters | | ✓ PR #2 (L1) |
+| OpenRouter chat adapter, Voyage embeddings via ai.mongodb.com | | ✓ PR #2 (L1) |
+| Harness Bench (three arms, cost/wall/vectors/tokens/correctness per run) | | ✓ PR #3 (L2) |
+| Vercel deployment + CI | | ✓ PR #1 (L3) |
 
-**Atlas live verification is pending.** The Atlas adapter and Vector Search query path are implemented, but they must not be described as verified until cluster connectivity and index setup succeed and the checklist in [`docs/ATLAS_SETUP.md`](docs/ATLAS_SETUP.md) passes against a live cluster.
-
-## Runtime
-
-- Web: React, TypeScript, Vite
-- API: FastAPI, Pydantic, PyMongo
-- Model: `gpt-oss:20b` through Ollama
-- Embeddings: `nomic-embed-text:latest` through Ollama, 768 dimensions
-- Data: process-local deterministic repository by default; MongoDB Atlas with Vector Search when configured
+See [`docs/PROVENANCE.md`](docs/PROVENANCE.md) for full details.
 
 ## Windows quick start
 

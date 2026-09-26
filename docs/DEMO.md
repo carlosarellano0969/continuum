@@ -165,19 +165,24 @@ Final presentation checks:
 - The proposal contrasts generic discount-first behavior with fast, verified financing information.
 - No credentials, personal information, or invented financial terms appear on screen.
 
-## Three-minute demo script
+## Three-minute demo script (Continuum V4: Atlas + hosted models)
+
+Open <DEPLOYED_URL> in the browser.
 
 | Time | Action | What to say |
 |---|---|---|
-| 0:00–0:20 | Show the top-bar identity and System status. | “Continuum is an inspectable memory and policy layer. Every read is scoped to this organization and agent.” |
-| 0:20–0:55 | Follow the evidence-loop rail to **Remember** and point to the financing and discount-first evidence. | “The agent remembers measured outcomes, not just chat history. The source and confidence stay attached.” |
-| 0:55–1:25 | Continue to **Govern** and compare the current and proposed rules. | “Repeated failures produced a proposal, but the model cannot activate it. A human must decide.” |
-| 1:25–1:40 | Click **Approve change**. | “Approval creates immutable policy v2 and an append-only audit event; it does not rewrite v1.” |
-| 1:40–2:20 | Follow the rail to **Decide**, keep the financing scenario, and click **Generate recommendation**. | “The agent retrieves at most five scoped memories and exactly one active policy, then records the decision and citations.” |
-| 2:20–2:50 | Click **Why did you change your mind?** to focus **Explain** on the same page. | “Here is the before/after policy chain, cited memory, measured outcomes, human approval, and audit linkage.” |
-| 2:50–3:00 | Point to policy v2 and close. | “Continuum lets an agent adapt from evidence without silently changing its own guardrails.” |
+| 0:00–0:20 | Show top bar and **System status**. Confirm Atlas Sandbox + OpenRouter chat + Voyage embeddings (1024-dim). | “Continuum runs on MongoDB Atlas with hosted embeddings and chat. Memory is persistent and vector-searchable.” |
+| 0:20–0:50 | Click **Reset demo**, then **Decide**. Ask for a recommendation on the financing scenario under policy v1. | “The model retrieves up to five memories and the active policy, both scoped to this organization. Notice the citation—memory ID from Atlas.” |
+| 0:50–1:20 | Show **Outcomes** for the financing scenario. Click **Analyze**, then scroll to the **Govern** proposal. Click **Approve change**. | “When the model repeatedly fails under v1, Continuum proposes a change. A human approves, creating immutable v2. No silent edits.” |
+| 1:20–1:50 | Return to **Decide**; keep the same scenario. Click **Generate recommendation** (now using v2). Ask **Why did you change your mind?**. Focus **Explain** pane. | “Same question, different policy. The chain shows: v1 → outcomes → proposal → approval → v2 → new recommendation. Fully auditable.” |
+| 1:50–2:40 | Click the **Harness report** link (or navigate to `/bench`). Click **Run benchmark**. Read the three arm cards: **out_of_box** vs. **context_stuffing** vs. **continuum**. | “The Harness compares the same 12 synthetic tasks. Cost, latency, vector calls, tokens, correctness for each arm. Memory and policy save money and time.” |
+| 2:40–3:00 | Point to git history and `docs/PROVENANCE.md`. Explain what was built today vs. before. | “Every PR in git history shows what was built today: Atlas persistence, hosted models, the Harness Bench. All verified on the Atlas Sandbox.” |
 
-If the live model is cold, do not fill the silence with extra clicks. Say that the request is bounded and inspectable, then let it complete.
+**Fallback (if the live model is slow):**
+
+- Do not click repeatedly. Say: “The OpenRouter request is deterministic and bounded. Let it complete; you'll see the citations and audit chain.”
+- If model latency exceeds 10 seconds, skip the second recommendation and go directly to **Harness report** at 1:50.
+- The Harness itself is deterministic and always completes within 30 seconds for three arms.
 
 ## Degraded and unconfigured behavior
 

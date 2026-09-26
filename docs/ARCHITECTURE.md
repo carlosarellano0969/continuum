@@ -1,16 +1,34 @@
-# Continuum V1 architecture
+# Continuum V4 architecture
 
 ```text
-React/Vite browser
+Browser (React/Vite)
         |
         v
-FastAPI contract and state enforcement
-   |              |                 |
-   v              v                 v
-MongoDB Atlas   Ollama chat       Ollama embeddings
-documents +     gpt-oss:20b       nomic-embed-text
-Vector Search
+Vercel (web + Python API function)
+        |
+        +---- MongoDB Atlas Sandbox ----+
+        |     (memories + vector index, |
+        |      policies, outcomes,      |
+        |      audit, bench_runs)       |
+        |                               |
+        +---- OpenRouter API ------+
+        |     (openai/gpt-oss-20b) |
+        |                          |
+        +---- ai.mongodb.com ------+
+              (Voyage, 1024-dim)
 ```
+
+## Harness Bench
+
+Three inference arms on the same task suite, deterministic seeding, all synthetic:
+
+| Arm | Context | Retrieval | Citations |
+|---|---|---|---|
+| **out_of_box** | Role + task only | none | none |
+| **context_stuffing** | Role + task + full log (truncated) | none | none |
+| **continuum** | Role + task + active policy | top-5 filtered | memory IDs + policy v |
+
+Per run: cost, latency (wall), vector calls, tokens, correctness %. Stored in Atlas `bench_runs`.
 
 ## Trust boundaries
 
@@ -33,7 +51,7 @@ Vector Search
 ## Failure strategy
 
 - Health reports distinguish unconfigured dependencies from runtime failures.
-- Ollama and Atlas calls use bounded timeouts.
+- Atlas and model API calls use bounded timeouts.
 - Missing `MONGODB_URI` intentionally selects the deterministic, process-local repository. A configured Atlas backend fails application startup if initialization cannot complete, and later MongoDB operation failures surface as dependency errors; neither condition silently switches to memory.
-- Deterministic fake repositories/models support contract tests, but the demo is accepted only after a live Atlas/Ollama path is measured.
+- Deterministic fake embedders and chat models support contract tests.
 - Reset deletes and recreates records only within the configured demo tenant.
