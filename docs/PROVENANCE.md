@@ -20,5 +20,6 @@ The hackathon rules require that judges can clearly identify the work created du
 | Bench hardening: cost display, `task_limit`, run script, action-label scoring, adapt-before-measure, bounded model calls | `services/api/continuum_api/bench.py`, `scripts/run_bench.py` | merged (PRs #6, #7) |
 | Rate-limit fixes: cached health and embeddings, precomputed seed-memory vectors | `adapters.py`, `service.py`, `data/demo/memory_embeddings.voyage-4-large.json` | merged (PRs #11, #12) |
 | Deployment fixes: function duration, deployed URL in docs | `vercel.json`, docs | merged (PRs #8, #10) |
+| Bench revision: raw out-of-the-box baseline, leaner Continuum prompt, clearer v2 rule, output guardrail, unsafe and tokens-per-correct metrics, precomputed task embeddings | `guardrails.py`, `bench.py`, `service.py`, `adapters.py`, `apps/web/src/` | merged (PR #15) |
 
 All data is synthetic and labeled `synthetic: true`. See docs/SUBMISSION.md for the deployed URL.
