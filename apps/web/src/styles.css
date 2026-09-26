@@ -269,3 +269,21 @@ html { scroll-behavior: smooth; }
   .split-panel { grid-template-columns: 1fr; }
   .split-panel > div + div { border-left: 0; border-top: 1px solid #dce2da; }
 }
+
+/* Desktop: fit the whole dashboard in one screen; panels scroll inside themselves. */
+@media (min-width: 1181px) {
+  .workspace { padding-top: 12px; padding-bottom: 12px; }
+  .overview { align-items: center; margin-bottom: 10px; padding-bottom: 10px; }
+  .overview h1 { font-size: 24px; margin: 2px 0 0; }
+  .overview-copy > p:last-child { display: none; }
+  .proof-strip > div { padding: 6px 10px; }
+  .proof-strip strong { font-size: 17px; }
+  .welcome-grid { display: none; }
+  .control-grid { gap: 10px; }
+  .workspace-panel { overflow-y: auto; padding: 14px 16px; }
+  .panel-decide, .panel-explain, .panel-harness { height: calc((100vh - 222px) * .56); }
+  .panel-remember, .panel-govern { height: calc((100vh - 222px) * .44); }
+  .page-heading { margin-bottom: 10px; }
+  .page-heading h2 { font-size: 22px; }
+  .memory-list, .timeline, .audit-list, .harness-table-wrap { max-height: none; }
+}
