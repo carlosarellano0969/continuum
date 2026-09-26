@@ -151,7 +151,7 @@ export function App() {
   return <main className="app-shell" id="top">
     <a className="skip-link" href="#decide">Skip to decision workspace</a>
     <header className="topbar">
-      <a className="brand" href="#top" aria-label="Continuum home"><span className="brand-mark">C</span><span>continuum</span><em>V1.1</em></a>
+      <a className="brand" href="#top" aria-label="Continuum home"><span className="brand-mark">C</span><span>continuum</span><em>Atlas</em></a>
       <div className="identity"><span className="presence" />demo-org <span className="slash">/</span> demo-agent</div>
       <button className="button text-button" onClick={() => void resetDemo()} disabled={working !== null}>{working === 'reset' ? 'Resetting…' : 'Reset demo'}</button>
     </header>
@@ -199,7 +199,7 @@ export function App() {
 
 function Overview({ data, pendingProposal }: { data: DashboardData; pendingProposal: boolean }) {
   return <section className="overview" aria-labelledby="overview-title">
-    <div className="overview-copy"><p className="eyebrow">V1.1 · DECISION CONTROL ROOM</p><h1 id="overview-title">One decision. One evidence trail.</h1><p>Move from a grounded recommendation to its explanation, memory, and human-governed policy without leaving the page.</p></div>
+    <div className="overview-copy"><p className="eyebrow">ATLAS SANDBOX · LIVE DECISION CONTROL ROOM</p><h1 id="overview-title">One decision. One evidence trail.</h1><p>Move from a grounded recommendation to its explanation, memory, and human-governed policy without leaving the page.</p></div>
     <div className="proof-strip" aria-label="Workspace summary">
       <div><strong>v{data.policies.active?.version ?? '—'}</strong><span>active policy</span></div>
       <div><strong>{data.memories.length}</strong><span>memories loaded</span></div>
