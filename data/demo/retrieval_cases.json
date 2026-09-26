@@ -1,0 +1,52 @@
+{
+  "cases": [
+    {
+      "allowed_support_memory_ids": [
+        "mem-demo-non-financing-boundary",
+        "mem-demo-human-approval"
+      ],
+      "case_id": "financing-pricing-fast-information",
+      "forbidden_memory_ids": [
+        "mem-demo-source-uplift-distractor"
+      ],
+      "max_results": 5,
+      "query": "A prospective buyer asks about financing and monthly pricing; what response has evidence?",
+      "required_memory_ids": [
+        "mem-demo-fast-financing-information"
+      ]
+    },
+    {
+      "allowed_support_memory_ids": [
+        "mem-demo-specific-incentive-boundary",
+        "mem-demo-human-approval"
+      ],
+      "case_id": "generic-discount-first",
+      "forbidden_memory_ids": [
+        "mem-demo-source-uplift-distractor"
+      ],
+      "max_results": 5,
+      "query": "Should an agent lead with a generic discount when a buyer raises a pricing concern?",
+      "required_memory_ids": [
+        "mem-demo-discount-first-underperformance"
+      ]
+    },
+    {
+      "allowed_support_memory_ids": [
+        "mem-demo-human-approval"
+      ],
+      "case_id": "small-sample-source-distractor",
+      "expected_evidence_strength": "insufficient",
+      "forbidden_memory_ids": [
+        "mem-demo-fast-financing-information",
+        "mem-demo-discount-first-underperformance"
+      ],
+      "max_results": 5,
+      "query": "Do source-tailored replies work better for regional partner directory inquiries?",
+      "required_memory_ids": [
+        "mem-demo-source-uplift-distractor"
+      ]
+    }
+  ],
+  "format_version": "continuum.demo.v1",
+  "scoring_note": "Required IDs are the known relevant records. Forbidden IDs are deliberate semantic distractors."
+}

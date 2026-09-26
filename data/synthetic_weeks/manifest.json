@@ -1,0 +1,85 @@
+{
+  "duration_days": 30,
+  "files": [
+    {
+      "bytes": 1242844,
+      "path": "interactions.jsonl",
+      "records": 1440,
+      "sha256": "17f65d4416eaa2b85a2fd1477bae0abb3f524e6fac2976aea505a9ebedc35cef"
+    }
+  ],
+  "fixture_epoch": "2026-09-24T13:00:00Z",
+  "format_version": "continuum.synthetic.weeks.v1",
+  "generation_is_deterministic": true,
+  "identity": {
+    "agent_id": "demo-agent",
+    "organization_id": "demo-org"
+  },
+  "interaction_count": 1440,
+  "interactions_per_day": 48,
+  "policy_transition_day": 15,
+  "policy_versions": [
+    1,
+    2
+  ],
+  "safety": {
+    "data_classification": "synthetic_non_sensitive",
+    "validation": "schema, temporal window, categorical values, and identifier-like content"
+  },
+  "scenario_source": "ollama-reviewed-blueprint",
+  "scenario_source_model": "gpt-oss:20b",
+  "seed": 20260924,
+  "trend_summary": {
+    "adaptation": {
+      "interactions": 768,
+      "preferred_policy_action_rate": 0.625,
+      "preferred_policy_actions": 480,
+      "resolution_rate": 0.7552,
+      "resolved": 580
+    },
+    "baseline": {
+      "interactions": 672,
+      "preferred_policy_action_rate": 0.25,
+      "preferred_policy_actions": 168,
+      "resolution_rate": 0.6458,
+      "resolved": 434
+    }
+  },
+  "weekly_summary": {
+    "1": {
+      "interactions": 336,
+      "preferred_policy_action_rate": 0.25,
+      "preferred_policy_actions": 84,
+      "resolution_rate": 0.6488,
+      "resolved": 218
+    },
+    "2": {
+      "interactions": 336,
+      "preferred_policy_action_rate": 0.25,
+      "preferred_policy_actions": 84,
+      "resolution_rate": 0.6429,
+      "resolved": 216
+    },
+    "3": {
+      "interactions": 336,
+      "preferred_policy_action_rate": 0.625,
+      "preferred_policy_actions": 210,
+      "resolution_rate": 0.7679,
+      "resolved": 258
+    },
+    "4": {
+      "interactions": 336,
+      "preferred_policy_action_rate": 0.625,
+      "preferred_policy_actions": 210,
+      "resolution_rate": 0.7381,
+      "resolved": 248
+    },
+    "5": {
+      "interactions": 96,
+      "preferred_policy_action_rate": 0.625,
+      "preferred_policy_actions": 60,
+      "resolution_rate": 0.7708,
+      "resolved": 74
+    }
+  }
+}

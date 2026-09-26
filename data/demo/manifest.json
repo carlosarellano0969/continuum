@@ -1,0 +1,116 @@
+{
+  "distribution": {
+    "background_mix": 65,
+    "financing_pricing_fast_information": 154,
+    "generic_discount_first_underperformance": 133,
+    "small_sample_source_uplift": 8
+  },
+  "files": [
+    {
+      "bytes": 285316,
+      "path": "interactions.jsonl",
+      "records": 360,
+      "sha256": "4a83134607142b5820895cace10ee4e476c73f96925f311af40c71f64dfb559d"
+    },
+    {
+      "bytes": 3222,
+      "path": "memories.jsonl",
+      "records": 6,
+      "sha256": "78382d51027e561360d5b0ab869df1d9c56813fec0cc29ee1c6b20cfe7b667bd"
+    },
+    {
+      "bytes": 1700,
+      "path": "retrieval_cases.json",
+      "records": 3,
+      "sha256": "75d08d45ad617741f43af7e365253081ec809c6a1ee8ee16d3e1f8a997439f85"
+    }
+  ],
+  "fixture_epoch": "2026-09-24T13:00:00Z",
+  "format_version": "continuum.demo.v1",
+  "generation_is_deterministic": true,
+  "identity": {
+    "agent_id": "demo-agent",
+    "organization_id": "demo-org"
+  },
+  "interaction_count": 360,
+  "known_answer_retrieval_cases": 3,
+  "patterns": {
+    "financing_pricing_fast_information": {
+      "absolute_success_lift": 0.5194,
+      "approved_interpretation": "financing and pricing inquiries benefit from fast financing information",
+      "baseline": {
+        "count": 77,
+        "success_rate": 0.3377,
+        "successes": 26
+      },
+      "baseline_action": "deferred_financing_follow_up",
+      "candidate": {
+        "count": 77,
+        "success_rate": 0.8571,
+        "successes": 66
+      },
+      "candidate_action": "fast_financing_information",
+      "evidence_strength": "strong",
+      "minimum_absolute_success_lift": 0.3,
+      "minimum_group_size": 30,
+      "qualifier": "inquiry_type is financing_and_pricing"
+    },
+    "generic_discount_first_underperformance": {
+      "absolute_success_lift": 0.533,
+      "approved_interpretation": "generic discount-first replies perform worse than needs-based pricing explanations",
+      "baseline": {
+        "count": 66,
+        "success_rate": 0.2879,
+        "successes": 19
+      },
+      "baseline_action": "generic_discount_first_reply",
+      "candidate": {
+        "count": 67,
+        "success_rate": 0.8209,
+        "successes": 55
+      },
+      "candidate_action": "needs_based_pricing_explanation",
+      "evidence_strength": "strong",
+      "minimum_absolute_success_lift": 0.3,
+      "minimum_group_size": 30,
+      "qualifier": "inquiry_type is pricing_objection"
+    },
+    "small_sample_source_uplift": {
+      "absolute_success_lift": 0.75,
+      "approved_interpretation": "small-sample source effect must not qualify",
+      "baseline": {
+        "count": 4,
+        "success_rate": 0.25,
+        "successes": 1
+      },
+      "baseline_action": "standard_source_reply",
+      "candidate": {
+        "count": 4,
+        "success_rate": 1.0,
+        "successes": 4
+      },
+      "candidate_action": "source_tailored_reply",
+      "evidence_strength": "insufficient",
+      "insufficient_reason": "deliberately capped below 20 interactions",
+      "maximum_total_evidence": 12,
+      "qualifier": "lead_source is regional_partner_directory"
+    }
+  },
+  "safety": {
+    "classification": "synthetic_non_sensitive",
+    "contains_credentials": false,
+    "contains_health_or_financial_records": false,
+    "contains_real_people": false,
+    "prohibited_fields": [
+      "name",
+      "email",
+      "phone",
+      "address",
+      "date_of_birth",
+      "ssn",
+      "account_number",
+      "credential"
+    ]
+  },
+  "seed": 20260924
+}
