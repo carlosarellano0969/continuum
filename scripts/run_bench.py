@@ -17,8 +17,8 @@ import urllib.request
 from typing import Any
 
 DEFAULT_BASE_URL = "http://127.0.0.1:8000/api"
-REQUEST_TIMEOUT_SECONDS = 900.0
-ALL_ARMS = ("out_of_box", "context_stuffing", "continuum")
+REQUEST_TIMEOUT_SECONDS = 1800.0
+ALL_ARMS = ("out_of_box", "context_stuffing", "continuum", "out_of_box_large")
 
 
 def _post_bench_run(
@@ -27,11 +27,12 @@ def _post_bench_run(
     arms: list[str] | None,
     repeats: int,
     task_limit: int | None,
+    task_set: str,
     organization_id: str,
     agent_id: str,
     timeout: float,
 ) -> dict[str, Any]:
-    body: dict[str, Any] = {"repeats": repeats}
+    body: dict[str, Any] = {"repeats": repeats, "task_set": task_set}
     if arms is not None:
         body["arms"] = arms
     if task_limit is not None:
@@ -77,7 +78,7 @@ def _print_summary(document: dict[str, Any]) -> None:
             f"arm={arm} correct={correct_pct}% cost=${cost:.4f} wall={wall} "
             f"vector_calls={vector_calls} tokens={tokens}"
         )
-    print(f"run_id={document.get('run_id', '')}")
+    print(f"task_set={document.get('task_set', 'core')} run_id={document.get('run_id', '')}")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -92,13 +93,19 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--arms",
         default=None,
-        help=f"comma-separated arm list (default: all three, {','.join(ALL_ARMS)})",
+        help=f"comma-separated arm list (default: all, {','.join(ALL_ARMS)})",
     )
     parser.add_argument(
         "--task-limit",
         type=int,
         default=None,
-        help="use only the first N tasks in fixed order, 1-12 (default: all 12)",
+        help="use only the first N tasks in fixed order (default: all)",
+    )
+    parser.add_argument(
+        "--task-set",
+        choices=("core", "holdout"),
+        default="core",
+        help="core: the 12 fixture tasks; holdout: data/bench/tasks_holdout.json (default: core)",
     )
     parser.add_argument(
         "--repeats",
@@ -128,6 +135,7 @@ def main() -> int:
             arms=arms,
             repeats=args.repeats,
             task_limit=args.task_limit,
+            task_set=args.task_set,
             organization_id=args.organization_id,
             agent_id=args.agent_id,
             timeout=REQUEST_TIMEOUT_SECONDS,

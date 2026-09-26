@@ -88,7 +88,17 @@ def create_app(
     chat_model = chat_model or _build_chat_model(settings, ollama)
     embedder = embedder or _build_embedder(settings, ollama)
     service = ContinuumService(settings, repository, chat_model, embedder)
-    bench_harness = BenchHarness(service)
+    large_chat: ChatModel | None = None
+    if settings.model_provider == "openrouter":
+        # No cross-vendor fallback: a failed call retries the same large model.
+        large_chat = OpenRouterChatModel(
+            settings.openrouter_api_key,
+            model=settings.openrouter_large_model,
+            fallback_model=settings.openrouter_large_model,
+            max_output_tokens=settings.ollama_max_output_tokens,
+            reasoning_effort=settings.ollama_reasoning_effort,
+        )
+    bench_harness = BenchHarness(service, large_chat=large_chat)
 
     app = FastAPI(title="Continuum V1 API", version="0.1.0")
     app.state.continuum_service = service
@@ -245,7 +255,9 @@ def create_app(
         bench: Bench,
         body: BenchRunRequest = Body(default_factory=BenchRunRequest),
     ) -> dict:
-        return await bench.run(identity, body.arms, body.repeats, body.task_limit, body.adapt)
+        return await bench.run(
+            identity, body.arms, body.repeats, body.task_limit, body.adapt, task_set=body.task_set
+        )
 
     @app.get("/api/bench/runs")
     def list_bench_runs(identity: Scope, bench: Bench) -> dict:

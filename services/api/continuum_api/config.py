@@ -46,6 +46,8 @@ class Settings:
     openrouter_api_key: str | None = None
     openrouter_chat_model: str = "openai/gpt-oss-20b"
     openrouter_chat_model_fallback: str = "anthropic/claude-haiku-4.5"
+    # Bench only: a bigger raw model, so the small model + Continuum can be compared against it.
+    openrouter_large_model: str = "openai/gpt-oss-120b"
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -81,4 +83,5 @@ class Settings:
             openrouter_chat_model_fallback=os.getenv(
                 "OPENROUTER_CHAT_MODEL_FALLBACK", "anthropic/claude-haiku-4.5"
             ),
+            openrouter_large_model=os.getenv("OPENROUTER_LARGE_MODEL", "openai/gpt-oss-120b"),
         )
