@@ -182,3 +182,42 @@ def test_bench_run_unknown_arm_returns_409(client: TestClient) -> None:
 def test_bench_run_missing_id_returns_404(client: TestClient) -> None:
     response = client.get("/api/bench/runs/does-not-exist")
     assert response.status_code == 404
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "ACTION: fast_financing_information\nShare the financing overview now.",
+        "**Action:** `fast_financing_information` - share it now.",
+        "action = 'FAST_FINANCING_INFORMATION'.",
+    ],
+)
+def test_extract_action_reads_the_labelled_action_line(text: str) -> None:
+    assert extract_action(text) == "fast_financing_information"
+
+
+def test_extract_action_ignores_unknown_labels_and_falls_back_to_keywords() -> None:
+    text = "ACTION: call_them_later. A needs-based pricing explanation fits best."
+    assert extract_action(text) == "needs_based_pricing_explanation"
+
+
+def test_extract_action_paraphrase_without_label_is_not_scored() -> None:
+    assert extract_action("Offer them some payment options soon.") == "none_detected"
+
+
+def test_bench_run_adapts_policy_before_measuring_and_keeps_answer_text(client: TestClient) -> None:
+    response = client.post("/api/bench/run", json={"arms": ["continuum"], "task_limit": 2})
+    assert response.status_code == 200
+    body = response.json()
+    assert body["adapted"] is True
+    assert body["active_policy_version"] == 2
+    for row in body["rows"]:
+        assert row["policy_version"] == 2
+        assert row["recommendation"]
+        assert "rationale" in row
+
+
+def test_bench_run_without_adapt_measures_the_seeded_policy(client: TestClient) -> None:
+    response = client.post("/api/bench/run", json={"arms": ["continuum"], "task_limit": 1, "adapt": False})
+    assert response.status_code == 200
+    assert response.json()["active_policy_version"] == 1

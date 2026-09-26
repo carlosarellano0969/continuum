@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import math
@@ -10,6 +11,8 @@ from pydantic import BaseModel, ConfigDict, StringConstraints, ValidationError
 
 from .errors import DependencyError
 from .models import Memory, Policy
+
+OPENROUTER_TOTAL_TIMEOUT_SECONDS = 45.0
 
 
 class _ChatResponse(BaseModel):
@@ -377,7 +380,9 @@ class OpenRouterChatModel:
         for model_name in (self.model_name, self._fallback_model):
             try:
                 async with httpx.AsyncClient(timeout=self.timeout) as client:
-                    response = await client.post(
+                    # OpenRouter keeps slow requests alive with whitespace, so the
+                    # per-read timeout never fires; bound the whole call instead.
+                    response = await asyncio.wait_for(client.post(
                         self._URL,
                         headers={
                             "Authorization": f"Bearer {self._api_key}",
@@ -401,7 +406,7 @@ class OpenRouterChatModel:
                             },
                             "usage": {"include": True},
                         },
-                    )
+                    ), timeout=OPENROUTER_TOTAL_TIMEOUT_SECONDS)
                     response.raise_for_status()
                     body = response.json()
                 content = body["choices"][0]["message"]["content"]
@@ -416,7 +421,7 @@ class OpenRouterChatModel:
                     "cost_usd": float(usage.get("cost", 0.0) or 0.0),
                 }
                 return result.recommendation, result.rationale
-            except (httpx.HTTPError, ValueError, TypeError, KeyError, ValidationError) as exc:
+            except (httpx.HTTPError, asyncio.TimeoutError, ValueError, TypeError, KeyError, ValidationError) as exc:
                 last_error = exc
                 continue
         raise DependencyError(
