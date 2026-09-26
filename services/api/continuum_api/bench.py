@@ -95,15 +95,21 @@ def _normalize_usage(raw: dict[str, Any] | None) -> dict[str, float]:
 
 
 def _usage_from_model(obj: Any) -> dict[str, float]:
-    # Defensive read: L1's chat/embedder usage contract is landing in
-    # parallel. Whatever attribute name it settles on, default to zero.
-    raw = getattr(obj, "last_usage", None) or getattr(obj, "usage", None)
-    return _normalize_usage(raw)
+    # Matches ContinuumService.recommend's own read: `chat_model.last_usage`,
+    # a {prompt_tokens, completion_tokens, total_tokens, cost_usd} dict.
+    return _normalize_usage(getattr(obj, "last_usage", None))
 
 
 def _usage_from_trace(entry: dict[str, Any], fallback_source: Any) -> dict[str, float]:
     raw = entry.get("usage") if isinstance(entry, dict) else None
     return _normalize_usage(raw) if raw else _usage_from_model(fallback_source)
+
+
+def _embed_tokens(service: ContinuumService, embed_entry: dict[str, Any]) -> int:
+    # Embed usage isn't in the trace; VoyageEmbedder tracks it as
+    # last_usage_tokens (an int, not the chat usage dict shape).
+    source = service.embedder if embed_entry.get("status") == "ok" else service.fallback_embedder
+    return int(getattr(source, "last_usage_tokens", 0) or 0)
 
 
 def _stub_policy(identity: Identity) -> Policy:
@@ -236,11 +242,13 @@ class BenchHarness:
         request = RecommendationRequest(scenario=task["scenario"])
         response = await self._service.recommend(identity, request)
         chat_entry = next((t for t in response.tool_trace if t.get("tool") == "chat"), {})
+        embed_entry = next((t for t in response.tool_trace if t.get("tool") == "embed"), {})
         retrieval_entry = next((t for t in response.tool_trace if t.get("tool") == "memory_retrieval"), {})
         usage = _usage_from_trace(chat_entry, self._service.chat_model)
-        vector_calls = int(
-            retrieval_entry.get("vector_calls", 0) or (1 if retrieval_entry.get("backend") == "atlas-vector" else 0)
-        )
+        embed_tokens = _embed_tokens(self._service, embed_entry)
+        usage["prompt_tokens"] += embed_tokens
+        usage["total_tokens"] += embed_tokens
+        vector_calls = int(retrieval_entry.get("vector_calls", 0))
         return _CallResult(
             response.recommendation,
             response.rationale,

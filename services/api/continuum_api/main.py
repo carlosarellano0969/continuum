@@ -5,7 +5,17 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from .adapters import ChatModel, Embedder, OllamaAdapter, OllamaChatModel, OllamaEmbedder
+from .adapters import (
+    ChatModel,
+    DeterministicChatModel,
+    DeterministicEmbedder,
+    Embedder,
+    OllamaAdapter,
+    OllamaChatModel,
+    OllamaEmbedder,
+    OpenRouterChatModel,
+    VoyageEmbedder,
+)
 from .bench import BenchHarness
 from .config import Settings
 from .errors import ConflictError, ContinuumError, DependencyError, NotFoundError
@@ -20,6 +30,33 @@ from .models import (
 )
 from .repository import InMemoryRepository, MongoRepository, Repository
 from .service import ContinuumService
+
+
+def _build_chat_model(settings: Settings, ollama: OllamaAdapter) -> ChatModel:
+    if settings.model_provider == "openrouter":
+        return OpenRouterChatModel(
+            settings.openrouter_api_key,
+            model=settings.openrouter_chat_model,
+            fallback_model=settings.openrouter_chat_model_fallback,
+            max_output_tokens=settings.ollama_max_output_tokens,
+            reasoning_effort=settings.ollama_reasoning_effort,
+        )
+    if settings.model_provider == "deterministic":
+        return DeterministicChatModel()
+    return OllamaChatModel(ollama)
+
+
+def _build_embedder(settings: Settings, ollama: OllamaAdapter) -> Embedder:
+    if settings.embed_provider == "voyage":
+        return VoyageEmbedder(
+            settings.endpoint,
+            settings.model_api_key,
+            model=settings.voyage_embed_model,
+            dimensions=settings.embed_dimensions,
+        )
+    if settings.embed_provider == "deterministic":
+        return DeterministicEmbedder()
+    return OllamaEmbedder(ollama)
 
 
 def create_app(
@@ -48,8 +85,8 @@ def create_app(
         settings.ollama_max_output_tokens,
         settings.ollama_reasoning_effort,
     )
-    chat_model = chat_model or OllamaChatModel(ollama)
-    embedder = embedder or OllamaEmbedder(ollama)
+    chat_model = chat_model or _build_chat_model(settings, ollama)
+    embedder = embedder or _build_embedder(settings, ollama)
     service = ContinuumService(settings, repository, chat_model, embedder)
     bench_harness = BenchHarness(service)
 
